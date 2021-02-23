@@ -1,48 +1,48 @@
 use emu6502::ram::{MemIO, RAM};
 use emu6502::reset::Reset;
 
-pub struct Bus {
-    ram: RAM,
-    rom: Vec<u8>,
+use crate::ppu::PPU;
+
+pub struct Bus<'a> {
+    wram: RAM,
+    prg_rom: Vec<u8>,
+    ppu: &'a mut PPU,
 }
 
-impl Bus {
-    pub fn set_rom(&mut self, rom: Vec<u8>) {
-        self.rom = rom;
-    }
-}
-
-impl Default for Bus {
-    fn default() -> Self {
+impl<'a> Bus<'a> {
+    pub fn new(ppu: &'a mut PPU, prg_rom: Vec<u8>) -> Bus<'a> {
         Bus {
-            ram: RAM::default(),
-            rom: vec![0; 0x8000],
+            wram: RAM::default(),
+            prg_rom,
+            ppu,
         }
     }
 }
 
-impl MemIO for Bus {
+impl<'a> MemIO for Bus<'a> {
     fn read_byte(&mut self, address: usize) -> u8 {
         match address {
-            0x0000..=0x07FF => self.ram.read_byte(address),
-            0x0800..=0x1FFF => self.ram.read_byte(address & 0x07FF),
-            0x8000..=0xFFFF => self.rom[address - 0x8000],
+            0x0000..=0x07FF => self.wram.read_byte(address),
+            0x0800..=0x1FFF => self.wram.read_byte(address & 0x07FF),
+            0x2000..=0x2007 => self.ppu.read_byte(address),
+            0x8000..=0xFFFF => self.prg_rom[address - 0x8000],
             _ => 0,
         }
     }
 
     fn write_byte(&mut self, address: usize, byte: u8) {
         match address {
-            0x0000..=0x07FF => self.ram.write_byte(address, byte),
-            0x0800..=0x1FFF => self.ram.write_byte(address & 0x07FF, byte),
+            0x0000..=0x07FF => self.wram.write_byte(address, byte),
+            0x0800..=0x1FFF => self.wram.write_byte(address & 0x07FF, byte),
+            0x2000..=0x2007 => self.ppu.write_byte(address, byte),
             0x8000..=0xFFFF => {}
             _ => {}
         }
     }
 }
 
-impl Reset for Bus {
+impl<'a> Reset for Bus<'a> {
     fn reset(&mut self) {
-        self.ram.reset();
+        self.wram.reset();
     }
 }
