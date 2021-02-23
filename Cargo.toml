@@ -7,3 +7,4 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+emu6502 = { git = "https://github.com/naari3/emu6502", rev = "c698d72" }
