@@ -10,11 +10,14 @@ pub struct NES {
 impl NES {
     pub fn new(rom: ROM) -> NES {
         let ppu = PPU::default();
-        NES {
+        let mut nes = NES {
             cpu: CPU::default(),
             ppu,
             rom,
-        }
+        };
+        nes.cpu
+            .reset(&mut Bus::new(&mut nes.ppu, nes.rom.prg.clone()));
+        nes
     }
 
     pub fn run(&mut self) {
