@@ -210,9 +210,9 @@ struct Address {
 impl Address {
     pub fn set_as_u8(&mut self, byte: u8) {
         if !self.is_stored_first {
-            self.addr = byte as u16;
+            self.addr = (byte as u16) << 8;
         } else {
-            self.addr += (byte as u16) << 8;
+            self.addr += byte as u16;
         }
         self.is_stored_first = !self.is_stored_first;
     }
