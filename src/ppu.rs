@@ -51,7 +51,7 @@ impl MemIO for PPU {
                 if addr >= 0x3000 && addr <= 0x3EFF {
                     addr -= 0x1000;
                 }
-                match address {
+                let byte = match address {
                     // https://wiki.nesdev.com/w/index.php/PPU_memory_map
                     0x0000..=0x0FFF => self.chr_rom[address],
                     0x1000..=0x1FFF => self.chr_rom[address],
@@ -62,7 +62,10 @@ impl MemIO for PPU {
                     0x3F00..=0x3F1F => self.palette_ram.read_byte(addr - 0x3F00),
                     0x3F20..=0x3FFF => self.palette_ram.read_byte((addr - 0x3F20) & 0x1F),
                     _ => 0,
-                }
+                };
+                self.address
+                    .increment_address(self.control.increment_address);
+                byte
             }
             _ => 0,
         }
@@ -104,6 +107,8 @@ impl MemIO for PPU {
                     }
                     _ => {}
                 };
+                self.address
+                    .increment_address(self.control.increment_address);
             }
             _ => {}
         }
@@ -210,6 +215,10 @@ impl Address {
             self.addr += (byte as u16) << 8;
         }
         self.is_stored_first = !self.is_stored_first;
+    }
+
+    pub fn increment_address(&mut self, large_increment: bool) {
+        self.addr += if large_increment { 32 } else { 1 }
     }
 
     pub fn get(&self) -> u16 {
