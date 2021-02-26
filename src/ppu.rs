@@ -49,6 +49,8 @@ impl PPU {
             self.cycles = 0;
             self.scan_line += 1;
 
+            // maybe set frame increments near by scan_line == 240
+
             if self.scan_line > 261 {
                 self.scan_line = 0;
             }
