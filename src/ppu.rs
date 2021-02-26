@@ -39,6 +39,11 @@ impl Default for PPU {
 impl PPU {
     pub fn step(&mut self) {
         self.render_pixel();
+        self.update_status();
+        self.tick();
+    }
+
+    fn tick(&mut self) {
         self.cycles += 1;
         if self.cycles > 340 {
             self.cycles = 0;
@@ -46,6 +51,17 @@ impl PPU {
 
             if self.scan_line > 261 {
                 self.scan_line = 0;
+            }
+        }
+    }
+
+    fn update_status(&mut self) {
+        // at leach new scan line...
+        if self.cycles == 1 {
+            if self.scan_line == 241 {
+                self.status.set_vblank();
+            } else if self.scan_line == 261 {
+                self.status.clear_vblank()
             }
         }
     }
@@ -256,6 +272,14 @@ impl Status {
         (self.vblank as u8) << 6
             | (self.sprite_zero_hit as u8) << 5
             | (self.sprite_overflow as u8) << 4
+    }
+
+    fn set_vblank(&mut self) {
+        self.vblank = true;
+    }
+
+    fn clear_vblank(&mut self) {
+        self.vblank = false;
     }
 }
 
