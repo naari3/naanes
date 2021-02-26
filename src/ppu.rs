@@ -1,5 +1,3 @@
-use std::usize;
-
 use emu6502::ram::{MemIO, RAM};
 
 #[derive(Debug)]
@@ -15,6 +13,9 @@ pub struct PPU {
     scroll: Scroll,   // $2005
     address: Address, // $2006
     data: Data,       // $2007
+
+    cycles: usize,
+    scan_line: usize,
 }
 
 impl Default for PPU {
@@ -29,12 +30,89 @@ impl Default for PPU {
             scroll: Scroll::default(),
             address: Address::default(),
             data: Data::default(),
+            cycles: 0,
+            scan_line: 0,
         }
     }
 }
 
 impl PPU {
-    pub fn step(&mut self) {}
+    pub fn step(&mut self) {
+        self.render_pixel();
+        self.cycles += 1;
+        if self.cycles > 340 {
+            self.cycles = 0;
+            self.scan_line += 1;
+
+            if self.scan_line > 261 {
+                self.scan_line = 0;
+            }
+        }
+    }
+
+    fn render_pixel(&mut self) {
+        if self.cycles >= 257 || self.scan_line >= 240 || self.cycles == 0 {
+            println!("skip!");
+            return;
+        }
+
+        let x = self.cycles - 1;
+        let y = self.scan_line;
+
+        let c = self.get_background_pixel(x, y);
+        if c != 0xD && c != 0xE && c != 0xF && c != 0x0 {
+            println!("x: {:03}, y: {:03}, c: 0x{:02x}", x, y, c);
+        }
+    }
+
+    fn get_background_pixel(&mut self, x: usize, y: usize) -> u8 {
+        // it can be cached
+        let tile_number = self.vram[0x2000 + x / 8 + (y / 8) * 0x20];
+        let tile = self.get_tile(tile_number);
+        let pal = self.get_palette_number(tile_number);
+        let c = tile[y % 8][x % 8];
+
+        if c == 0 {
+            self.palette_ram.read_byte(0)
+        } else {
+            self.palette_ram.read_byte((1 + pal * 3 + c) as usize)
+        }
+    }
+
+    fn get_tile(&mut self, tile_number: u8) -> Vec<Vec<u8>> {
+        let start_addr = tile_number as usize * 0x20;
+        let bytes = [start_addr]
+            .iter()
+            .cycle()
+            .take(0x10)
+            .enumerate()
+            .map(|(i, addr)| self.read_byte(*addr as usize + i))
+            .collect::<Vec<_>>();
+        let to_bits = |uint| {
+            [()].iter()
+                .cycle()
+                .take(8)
+                .enumerate()
+                .map(|(j, _)| uint >> j & 1 == 1)
+                .collect::<Vec<_>>()
+        };
+        let mut tile = Vec::new();
+        for i in 0..8 {
+            let one_bar = to_bits(bytes[i])
+                .iter()
+                .zip(to_bits(bytes[i + 8]))
+                .map(|(b1, b2)| *b1 as u8 + b2 as u8)
+                .collect::<Vec<_>>();
+            tile.push(one_bar);
+        }
+        tile
+    }
+
+    fn get_palette_number(&mut self, tile_number: u8) -> u8 {
+        // todo
+        0
+    }
+
     pub fn set_rom(&mut self, rom: Vec<u8>) {
         self.chr_rom = rom;
     }
