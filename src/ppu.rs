@@ -126,7 +126,7 @@ impl PPU {
         tile
     }
 
-    fn get_palette_number(&mut self, tile_number: u8) -> u8 {
+    fn get_palette_number(&mut self, _tile_number: u8) -> u8 {
         // todo
         0
     }
