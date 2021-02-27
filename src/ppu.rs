@@ -63,7 +63,7 @@ impl PPU {
             if self.scan_line == 241 {
                 self.status.set_vblank();
             } else if self.scan_line == 261 {
-                self.status.clear_vblank()
+                self.status.clear_vblank();
             }
         }
     }
