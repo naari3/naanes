@@ -1,4 +1,5 @@
 mod bus;
+mod mapper;
 mod nes;
 mod ppu;
 mod rom;
