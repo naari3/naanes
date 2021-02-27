@@ -296,9 +296,9 @@ struct Status {
 
 impl Status {
     pub fn get_as_u8(&self) -> u8 {
-        (self.vblank as u8) << 6
-            | (self.sprite_zero_hit as u8) << 5
-            | (self.sprite_overflow as u8) << 4
+        (self.vblank as u8) << 7
+            | (self.sprite_zero_hit as u8) << 6
+            | (self.sprite_overflow as u8) << 5
     }
 
     fn set_vblank(&mut self) {
