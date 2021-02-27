@@ -134,6 +134,30 @@ impl PPU {
     pub fn set_rom(&mut self, rom: Vec<u8>) {
         self.chr_rom = rom;
     }
+
+    fn write_byte_to_namespace(&mut self, address: usize, byte: u8) {
+        let addr = self.get_mirrored_name_space_address(address);
+        self.vram.write_byte(addr, byte);
+    }
+
+    fn read_byte_from_namespace(&mut self, address: usize) -> u8 {
+        let addr = self.get_mirrored_name_space_address(address);
+        self.vram.read_byte(addr)
+    }
+
+    fn get_mirrored_name_space_address(&mut self, address: usize) -> usize {
+        // TODO: support to another mirroring by mapper
+        // see also https://wiki.nesdev.com/w/index.php/Mirroring
+        match address {
+            0x2000..=0x23FF => address,
+            0x2400..=0x27FF => address,
+            0x2800..=0x2BFF => address - 0x400,
+            0x2C00..=0x2FFF => address - 0x400,
+            _ => {
+                panic!("out of index: {:x}", address)
+            }
+        }
+    }
 }
 
 impl MemIO for PPU {
@@ -150,10 +174,7 @@ impl MemIO for PPU {
                     // https://wiki.nesdev.com/w/index.php/PPU_memory_map
                     0x0000..=0x0FFF => self.chr_rom[address],
                     0x1000..=0x1FFF => self.chr_rom[address],
-                    0x2000..=0x23FF => self.vram.read_byte(addr),
-                    0x2400..=0x27FF => self.vram.read_byte(addr),
-                    0x2800..=0x2BFF => self.vram.read_byte(addr - 0x400),
-                    0x2C00..=0x2FFF => self.vram.read_byte(addr - 0x400),
+                    0x2000..=0x2FFF => self.read_byte_from_namespace(address),
                     0x3F00..=0x3F1F => self.palette_ram.read_byte(addr - 0x3F00),
                     0x3F20..=0x3FFF => self.palette_ram.read_byte((addr - 0x3F20) & 0x1F),
                     _ => 0,
@@ -181,17 +202,8 @@ impl MemIO for PPU {
                     // https://wiki.nesdev.com/w/index.php/PPU_memory_map
                     0x0000..=0x0FFF => {}
                     0x1000..=0x1FFF => {}
-                    0x2000..=0x23FF => {
-                        self.vram.write_byte(addr, byte);
-                    }
-                    0x2400..=0x27FF => {
-                        self.vram.write_byte(addr, byte);
-                    }
-                    0x2800..=0x2BFF => {
-                        self.vram.write_byte(addr - 0x400, byte);
-                    }
-                    0x2C00..=0x2FFF => {
-                        self.vram.write_byte(addr - 0x400, byte);
+                    0x2000..=0x2FFF => {
+                        self.write_byte_to_namespace(addr, byte);
                     }
                     0x3F00..=0x3F1F => {
                         self.palette_ram.write_byte(addr - 0x3F00, byte);
