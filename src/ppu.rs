@@ -135,12 +135,12 @@ impl PPU {
         self.chr_rom = rom;
     }
 
-    fn write_byte_to_namespace(&mut self, address: usize, byte: u8) {
+    fn write_byte_to_nametable(&mut self, address: usize, byte: u8) {
         let addr = self.get_mirrored_name_space_address(address);
         self.vram.write_byte(addr, byte);
     }
 
-    fn read_byte_from_namespace(&mut self, address: usize) -> u8 {
+    fn read_byte_from_nametable(&mut self, address: usize) -> u8 {
         let addr = self.get_mirrored_name_space_address(address);
         self.vram.read_byte(addr)
     }
@@ -174,7 +174,7 @@ impl MemIO for PPU {
                     // https://wiki.nesdev.com/w/index.php/PPU_memory_map
                     0x0000..=0x0FFF => self.chr_rom[address],
                     0x1000..=0x1FFF => self.chr_rom[address],
-                    0x2000..=0x2FFF => self.read_byte_from_namespace(address),
+                    0x2000..=0x2FFF => self.read_byte_from_nametable(address),
                     0x3F00..=0x3F1F => self.palette_ram.read_byte(addr - 0x3F00),
                     0x3F20..=0x3FFF => self.palette_ram.read_byte((addr - 0x3F20) & 0x1F),
                     _ => 0,
@@ -203,7 +203,7 @@ impl MemIO for PPU {
                     0x0000..=0x0FFF => {}
                     0x1000..=0x1FFF => {}
                     0x2000..=0x2FFF => {
-                        self.write_byte_to_namespace(addr, byte);
+                        self.write_byte_to_nametable(addr, byte);
                     }
                     0x3F00..=0x3F1F => {
                         self.palette_ram.write_byte(addr - 0x3F00, byte);
