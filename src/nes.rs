@@ -17,6 +17,7 @@ impl NES {
         };
         nes.cpu
             .reset(&mut Bus::new(&mut nes.ppu, nes.rom.prg.clone()));
+        // nes.cpu.debug = true;
         nes
     }
 

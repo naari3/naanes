@@ -93,15 +93,7 @@ impl PPU {
         if c == 0 {
             self.palette_ram.read_byte(0)
         } else {
-            let a = self.palette_ram.read_byte((pal * 3 + c) as usize);
-            println!(
-                "pal: 0x{:02x}, num: 0x{:02x}, addr: 0x{:04x} color: 0x{:02x}",
-                pal,
-                c,
-                (pal * 3 + c) as usize + 0x3F00,
-                a
-            );
-            a
+            self.palette_ram.read_byte((pal * 3 + c) as usize)
         }
     }
 
