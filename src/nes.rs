@@ -20,16 +20,16 @@ impl NES {
         nes
     }
 
-    pub fn run(&mut self) {
+    pub fn run(&mut self, display: &mut [[[u8; 3]; 256]; 240]) {
         self.ppu.set_rom(self.rom.chr.clone());
         loop {
             {
                 let mut bus = Bus::new(&mut self.ppu, self.rom.prg.clone());
                 self.cpu.step(&mut bus);
             }
-            self.ppu.step();
-            self.ppu.step();
-            self.ppu.step();
+            self.ppu.step(display);
+            self.ppu.step(display);
+            self.ppu.step(display);
         }
     }
 }
