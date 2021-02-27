@@ -1,6 +1,6 @@
 use emu6502::ram::{MemIO, RAM};
 
-use crate::mapper::Mapper;
+use crate::mapper::{Mapper, Mirroring};
 
 #[derive(Debug)]
 pub struct PPU {
@@ -152,14 +152,25 @@ impl PPU {
     fn get_mirrored_name_space_address(&mut self, address: usize) -> usize {
         // TODO: support to another mirroring by mapper
         // see also https://wiki.nesdev.com/w/index.php/Mirroring
-        match address {
-            0x2000..=0x23FF => address,
-            0x2400..=0x27FF => address,
-            0x2800..=0x2BFF => address - 0x400,
-            0x2C00..=0x2FFF => address - 0x400,
-            _ => {
-                panic!("out of index: {:x}", address)
-            }
+        match self.mapper.get_nametable_mirroring_type() {
+            Mirroring::Horizontal => match address {
+                0x2000..=0x23FF => address,
+                0x2400..=0x27FF => address - 0x400, // mirror
+                0x2800..=0x2BFF => address,
+                0x2C00..=0x2FFF => address - 0x400, // mirror
+                _ => {
+                    panic!("out of index: {:x}", address)
+                }
+            },
+            Mirroring::Vertical => match address {
+                0x2000..=0x23FF => address,
+                0x2400..=0x27FF => address,
+                0x2800..=0x2BFF => address - 0x400, // mirror
+                0x2C00..=0x2FFF => address - 0x400, // mirror
+                _ => {
+                    panic!("out of index: {:x}", address)
+                }
+            },
         }
     }
 }
