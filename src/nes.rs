@@ -9,24 +9,25 @@ pub struct NES {
 
 impl NES {
     pub fn new(rom: ROM) -> NES {
-        let ppu = PPU::default();
+        let ppu = PPU::new(rom.mapper);
+        let prg = rom.prg.clone();
         let mut nes = NES {
             cpu: CPU::default(),
             ppu,
             rom,
         };
         nes.cpu
-            .reset(&mut Bus::new(&mut nes.ppu, nes.rom.prg.clone()));
+            .reset(&mut Bus::new(&mut nes.ppu, prg, nes.rom.mapper));
         // nes.cpu.debug = true;
         nes
     }
 
     pub fn run(&mut self, display: &mut [[[u8; 3]; 256]; 240]) {
-        self.ppu.set_rom(self.rom.chr.clone());
+        self.ppu.set_rom(self.rom.chr.clone(), self.rom.mapper);
         let mut loop_count = 0;
         loop {
             {
-                let mut bus = Bus::new(&mut self.ppu, self.rom.prg.clone());
+                let mut bus = Bus::new(&mut self.ppu, self.rom.prg.clone(), self.rom.mapper);
                 self.cpu.step(&mut bus);
             }
             self.ppu.step(display);

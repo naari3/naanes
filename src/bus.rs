@@ -1,20 +1,22 @@
 use emu6502::ram::{MemIO, RAM};
 use emu6502::reset::Reset;
 
-use crate::ppu::PPU;
+use crate::{mapper::Mapper, ppu::PPU};
 
 pub struct Bus<'a> {
     wram: RAM,
     prg_rom: Vec<u8>,
     ppu: &'a mut PPU,
+    mapper: Mapper,
 }
 
 impl<'a> Bus<'a> {
-    pub fn new(ppu: &'a mut PPU, prg_rom: Vec<u8>) -> Bus<'a> {
+    pub fn new(ppu: &'a mut PPU, prg_rom: Vec<u8>, mapper: Mapper) -> Bus<'a> {
         Bus {
             wram: RAM::default(),
             prg_rom,
             ppu,
+            mapper,
         }
     }
 }
@@ -25,7 +27,7 @@ impl<'a> MemIO for Bus<'a> {
             0x0000..=0x07FF => self.wram.read_byte(address),
             0x0800..=0x1FFF => self.wram.read_byte(address & 0x07FF),
             0x2000..=0x2007 => self.ppu.read_byte(address),
-            0x8000..=0xFFFF => self.prg_rom[address - 0x8000],
+            0x8000..=0xFFFF => self.prg_rom[self.mapper.mapping_address(address)],
             _ => 0,
         }
     }

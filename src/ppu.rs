@@ -1,7 +1,11 @@
 use emu6502::ram::{MemIO, RAM};
 
+use crate::mapper::Mapper;
+
 #[derive(Debug)]
 pub struct PPU {
+    mapper: Mapper,
+
     vram: RAM,
     palette_ram: RAM,
     chr_rom: Vec<u8>,
@@ -18,9 +22,10 @@ pub struct PPU {
     scan_line: usize,
 }
 
-impl Default for PPU {
-    fn default() -> Self {
+impl PPU {
+    pub fn new(mapper: Mapper) -> Self {
         PPU {
+            mapper,
             vram: RAM::new(vec![0; 0x4000]),
             palette_ram: RAM::new(vec![0; 0x20]),
             chr_rom: vec![],
@@ -34,9 +39,7 @@ impl Default for PPU {
             scan_line: 0,
         }
     }
-}
 
-impl PPU {
     pub fn step(&mut self, display: &mut [[[u8; 3]; 256]; 240]) {
         self.render_pixel(display);
         self.update_status(display);
@@ -131,8 +134,9 @@ impl PPU {
         0
     }
 
-    pub fn set_rom(&mut self, rom: Vec<u8>) {
+    pub fn set_rom(&mut self, rom: Vec<u8>, mapper: Mapper) {
         self.chr_rom = rom;
+        self.mapper = mapper;
     }
 
     fn write_byte_to_nametable(&mut self, address: usize, byte: u8) {

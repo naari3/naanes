@@ -3,6 +3,20 @@ pub enum Mapper {
     NRom(NRomMapper),
 }
 
+impl Mapper {
+    pub fn get_nametable_mirroring_type(&self) -> Mirroring {
+        match self {
+            Mapper::NRom(m) => m.get_nametable_mirroring_type(),
+        }
+    }
+
+    pub fn mapping_address(&self, address: usize) -> usize {
+        match self {
+            Mapper::NRom(m) => m.mapping_address(address),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum Mirroring {
     Horizontal,
