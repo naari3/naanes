@@ -57,7 +57,7 @@ impl PPU {
         }
     }
 
-    fn update_status(&mut self, display: &mut [[[u8; 3]; 256]; 240]) {
+    fn update_status(&mut self, _display: &mut [[[u8; 3]; 256]; 240]) {
         // at leach new scan line...
         if self.cycles == 1 {
             if self.scan_line == 241 {
@@ -70,7 +70,6 @@ impl PPU {
 
     fn render_pixel(&mut self, display: &mut [[[u8; 3]; 256]; 240]) {
         if self.cycles >= 257 || self.scan_line >= 240 || self.cycles == 0 {
-            println!("skip!");
             return;
         }
 
@@ -89,17 +88,25 @@ impl PPU {
         let tile_number = self.vram[0x2000 + x / 8 + (y / 8) * 0x20];
         let tile = self.get_tile(tile_number);
         let pal = self.get_palette_number(tile_number);
-        let c = tile[y % 8][x % 8];
+        let c = tile[y % 8][7 - (x % 8)];
 
         if c == 0 {
             self.palette_ram.read_byte(0)
         } else {
-            self.palette_ram.read_byte((1 + pal * 3 + c) as usize)
+            let a = self.palette_ram.read_byte((pal * 3 + c) as usize);
+            println!(
+                "pal: 0x{:02x}, num: 0x{:02x}, addr: 0x{:04x} color: 0x{:02x}",
+                pal,
+                c,
+                (pal * 3 + c) as usize + 0x3F00,
+                a
+            );
+            a
         }
     }
 
     fn get_tile(&mut self, tile_number: u8) -> Vec<Vec<u8>> {
-        let start_addr = tile_number as usize * 0x20;
+        let start_addr = tile_number as usize * 0x10;
         let bytes = [start_addr]
             .iter()
             .cycle()
@@ -120,7 +127,7 @@ impl PPU {
             let one_bar = to_bits(bytes[i])
                 .iter()
                 .zip(to_bits(bytes[i + 8]))
-                .map(|(b1, b2)| *b1 as u8 + b2 as u8)
+                .map(|(b1, b2)| *b1 as u8 + ((b2 as u8) << 1))
                 .collect::<Vec<_>>();
             tile.push(one_bar);
         }
@@ -144,7 +151,6 @@ impl MemIO for PPU {
             0x2002 => self.status.get_as_u8(),
             0x2007 => {
                 let mut addr = self.address.get() as usize & 0x3FFF;
-                println!("addr: 0x{:x}", addr);
                 if addr >= 0x3000 && addr <= 0x3EFF {
                     addr -= 0x1000;
                 }
@@ -176,7 +182,6 @@ impl MemIO for PPU {
             0x2006 => self.address.set_as_u8(byte),
             0x2007 => {
                 let mut addr = self.address.get() as usize & 0x3FFF;
-                println!("addr: 0x{:x}", addr);
                 if addr >= 0x3000 && addr <= 0x3EFF {
                     addr -= 0x1000;
                 }
