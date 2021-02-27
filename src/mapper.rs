@@ -44,15 +44,17 @@ impl NRomMapper {
 }
 
 impl Mapping for NRomMapper {
+    // https://wiki.nesdev.com/w/index.php/NROM
     fn get_nametable_mirroring_type(&self) -> Mirroring {
         self.nametable_mirroring_type
     }
 
     fn mapping_address(&self, address: usize) -> usize {
-        let mut address = address - 0x8000;
-        if self.prg_units == 1 {
+        let mut address = address;
+        if self.prg_units == 1 && address >= 0xC000 {
             address -= 0x4000;
         }
+        address -= 0x8000;
         address
     }
 }
