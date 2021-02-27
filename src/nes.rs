@@ -1,6 +1,5 @@
 use crate::{bus::Bus, ppu::PPU, rom::ROM};
 use emu6502::cpu::CPU;
-use image::{save_buffer, ColorType};
 
 pub struct NES {
     cpu: CPU,
@@ -34,16 +33,13 @@ impl NES {
             self.ppu.step(display);
             loop_count += 1;
             if loop_count % 10000 == 0 {
-                let mut buf = vec![];
-                for x in 0..256 {
-                    for y in 0..240 {
-                        for i in 0..3 {
-                            buf.push(display[y][x][i]);
-                        }
-                    }
+                let scale = 4;
+                let mut imgbuf = image::ImageBuffer::new(256 * scale, 240 * scale);
+                for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
+                    let color = display[(y / scale) as usize][(x / scale) as usize];
+                    *pixel = image::Rgb([color[0], color[1], color[2]]);
                 }
-                println!("buf length: {}", buf.len());
-                image::save_buffer("a.png", &buf, 256, 240, image::ColorType::Rgb8).unwrap()
+                imgbuf.save("a.png").unwrap();
             }
         }
     }
