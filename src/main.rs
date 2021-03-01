@@ -1,4 +1,4 @@
-use std::{fs::File, io::Write};
+// use std::{fs::File, io::Write};
 
 mod bus;
 mod mapper;
@@ -7,10 +7,10 @@ mod ppu;
 mod rom;
 
 fn main() {
-    let rom_buffer = include_bytes!("../sample1.nes").to_vec();
+    let rom_buffer = include_bytes!("../nestest.nes").to_vec();
     let rom = rom::parse(rom_buffer);
-    let mut file = File::create("sample1.prg").unwrap();
-    file.write_all(&rom.prg).unwrap();
+    // let mut file = File::create("sample1.prg").unwrap();
+    // file.write_all(&rom.prg).unwrap();
     println!("Hello, world!: {}, {}", rom.prg.len(), rom.chr.len());
     let mut nes = nes::NES::new(rom);
 
