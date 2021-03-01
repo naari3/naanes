@@ -4,16 +4,16 @@ use emu6502::reset::Reset;
 use crate::{mapper::Mapper, ppu::PPU};
 
 pub struct Bus<'a> {
-    wram: RAM,
+    wram: &'a mut RAM,
     prg_rom: Vec<u8>,
     ppu: &'a mut PPU,
     mapper: Mapper,
 }
 
 impl<'a> Bus<'a> {
-    pub fn new(ppu: &'a mut PPU, prg_rom: Vec<u8>, mapper: Mapper) -> Bus<'a> {
+    pub fn new(wram: &'a mut RAM, ppu: &'a mut PPU, prg_rom: Vec<u8>, mapper: Mapper) -> Bus<'a> {
         Bus {
-            wram: RAM::default(),
+            wram,
             prg_rom,
             ppu,
             mapper,
