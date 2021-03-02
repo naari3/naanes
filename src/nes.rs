@@ -30,7 +30,9 @@ impl NES {
     pub fn run(&mut self, display: &mut [[[u8; 3]; 256]; 240]) {
         self.ppu.set_rom(self.rom.chr.clone(), self.rom.mapper);
         let mut loop_count = 0;
+        self.cpu.flags.i = true;
         self.cpu.pc = 0xC000;
+        self.cpu.sp = 0xFD;
         loop {
             {
                 let mut bus = Bus::new(
