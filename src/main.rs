@@ -1,6 +1,7 @@
 // use std::{fs::File, io::Write};
 
 mod bus;
+mod color;
 mod mapper;
 mod nes;
 mod ppu;
