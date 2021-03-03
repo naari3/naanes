@@ -30,9 +30,9 @@ impl NES {
     pub fn run(&mut self, display: &mut [[[u8; 3]; 256]; 240]) {
         self.ppu.set_rom(self.rom.chr.clone(), self.rom.mapper);
         let mut loop_count = 0;
-        self.cpu.flags.i = true;
-        self.cpu.pc = 0xC000;
-        self.cpu.sp = 0xFD;
+        // self.cpu.flags.i = true;
+        // self.cpu.pc = 0xC000;
+        // self.cpu.sp = 0xFD;
         loop {
             {
                 let mut bus = Bus::new(
@@ -48,18 +48,18 @@ impl NES {
             self.ppu.step(display);
             loop_count += 1;
             if loop_count % 10000 == 0 {
-                snapshot(display);
+                snapshot(display, loop_count);
             }
         }
     }
 }
 
-fn snapshot(&mut display: &mut [[[u8; 3]; 256]; 240]) {
+fn snapshot(&mut display: &mut [[[u8; 3]; 256]; 240], frame_count: usize) {
     let scale = 4;
     let mut imgbuf = image::ImageBuffer::new(256 * scale, 240 * scale);
     for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
         let color = display[(y / scale) as usize][(x / scale) as usize];
         *pixel = image::Rgb([color[0], color[1], color[2]]);
     }
-    imgbuf.save("a.png").unwrap();
+    imgbuf.save(format!("a_{:0>10}.png", frame_count)).unwrap();
 }
