@@ -1,4 +1,5 @@
 /target
 a.png
+a*.png
 *.nes
 *.prg
