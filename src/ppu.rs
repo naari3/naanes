@@ -10,14 +10,16 @@ pub struct PPU {
     vram: RAM,
     palette_ram: RAM,
     chr_rom: Vec<u8>,
-    control: Control, // $2000
-    mask: Mask,       // $2001
-    status: Status,   // $2002
-    // $2003
-    // $2004
-    scroll: Scroll,   // $2005
-    address: Address, // $2006
-    data: Data,       // $2007
+    control: Control,        // $2000
+    mask: Mask,              // $2001
+    status: Status,          // $2002
+    oam_address: OAMAddress, // $2003
+    oam_data: OAMData,       // $2004
+    scroll: Scroll,          // $2005
+    address: Address,        // $2006
+    data: Data,              // $2007
+
+    oam_dma: OAMDMA, // $4014
 
     cycles: usize,
     scan_line: usize,
@@ -33,9 +35,12 @@ impl PPU {
             control: Control::default(),
             mask: Mask::default(),
             status: Status::default(),
+            oam_address: OAMAddress::default(),
+            oam_data: OAMData::default(),
             scroll: Scroll::default(),
             address: Address::default(),
             data: Data::default(),
+            oam_dma: OAMDMA::default(),
             cycles: 0,
             scan_line: 0,
         }
@@ -208,6 +213,8 @@ impl MemIO for PPU {
         match address {
             0x2000 => self.control.set_as_u8(byte),
             0x2001 => self.mask.set_as_u8(byte),
+            0x2003 => self.oam_address.write_byte(byte),
+            0x2004 => self.oam_data.write_byte(byte),
             0x2005 => self.scroll.set_as_u8(byte),
             0x2006 => self.address.set_as_u8(byte),
             0x2007 => {
@@ -320,6 +327,29 @@ impl Status {
     }
 }
 
+// $2003
+#[derive(Default, Debug)]
+struct OAMAddress {
+    addr: u8,
+}
+
+impl OAMAddress {
+    pub fn write_byte(&mut self, byte: u8) {
+        println!("OAMAddress byte: 0x{:02X}", byte);
+        self.addr = byte;
+    }
+}
+
+// $2004
+#[derive(Default, Debug)]
+struct OAMData {}
+
+impl OAMData {
+    pub fn write_byte(&mut self, byte: u8) {
+        println!("OAMData byte: 0x{:02X}", byte);
+    }
+}
+
 // $2005
 #[derive(Default, Debug)]
 struct Scroll {
@@ -370,3 +400,6 @@ impl Address {
 struct Data {
     addr: u16,
 }
+
+#[derive(Default, Debug)]
+struct OAMDMA {}
