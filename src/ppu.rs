@@ -68,6 +68,7 @@ impl PPU {
                 self.status.set_vblank();
             } else if self.scan_line == 261 {
                 self.status.clear_vblank();
+                self.status.clear_zero_hit();
             }
         }
     }
@@ -308,6 +309,14 @@ impl Status {
 
     fn clear_vblank(&mut self) {
         self.vblank = false;
+    }
+
+    fn set_zero_hit(&mut self) {
+        self.sprite_zero_hit = true;
+    }
+
+    fn clear_zero_hit(&mut self) {
+        self.sprite_zero_hit = false;
     }
 }
 
