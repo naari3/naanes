@@ -121,7 +121,7 @@ checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
 [[package]]
 name = "emu6502"
 version = "0.1.0"
-source = "git+https://github.com/naari3/emu6502?rev=d4f1ae3#d4f1ae323f1cae84e726ec77e6d452a73d80d37d"
+source = "git+https://github.com/naari3/emu6502?rev=b481518#b4815180fa6cea60e22e4b493d4926d3bcb88f47"
 
 [[package]]
 name = "gif"
