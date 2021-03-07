@@ -1,11 +1,15 @@
 use crate::{bus::Bus, ppu::PPU, rom::ROM};
-use emu6502::{cpu::CPU, ram::RAM};
+use emu6502::{
+    cpu::{Interrupt, CPU},
+    ram::RAM,
+};
 
 pub struct NES {
     cpu: CPU,
     ppu: PPU,
     wram: RAM,
     rom: ROM,
+    nmi: bool,
 }
 
 impl NES {
@@ -17,6 +21,7 @@ impl NES {
             ppu,
             wram: RAM::default(),
             rom,
+            nmi: false,
         };
         nes.cpu.reset(&mut Bus::new(
             &mut nes.wram,
@@ -41,11 +46,14 @@ impl NES {
                     self.rom.prg.clone(),
                     self.rom.mapper,
                 );
+                if self.nmi {
+                    self.cpu.interrupt(&mut bus, Interrupt::NMI);
+                }
                 self.cpu.step(&mut bus);
             }
-            self.ppu.step(display);
-            self.ppu.step(display);
-            self.ppu.step(display);
+            self.ppu.step(display, &mut self.nmi);
+            self.ppu.step(display, &mut self.nmi);
+            self.ppu.step(display, &mut self.nmi);
             loop_count += 1;
             if loop_count % 10000 == 0 {
                 snapshot(display, loop_count);

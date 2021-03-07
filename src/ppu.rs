@@ -46,9 +46,9 @@ impl PPU {
         }
     }
 
-    pub fn step(&mut self, display: &mut [[[u8; 3]; 256]; 240]) {
+    pub fn step(&mut self, display: &mut [[[u8; 3]; 256]; 240], nmi: &mut bool) {
         self.render_pixel(display);
-        self.update_status(display);
+        self.update_status(display, nmi);
         self.tick();
     }
 
@@ -66,7 +66,7 @@ impl PPU {
         }
     }
 
-    fn update_status(&mut self, _display: &mut [[[u8; 3]; 256]; 240]) {
+    fn update_status(&mut self, _display: &mut [[[u8; 3]; 256]; 240], nmi: &mut bool) {
         // at leach new scan line...
         if self.cycles == 1 {
             if self.scan_line == 241 {
@@ -74,6 +74,14 @@ impl PPU {
             } else if self.scan_line == 261 {
                 self.status.clear_vblank();
                 self.status.clear_zero_hit();
+            }
+        }
+
+        if self.cycles == 10 {
+            if self.scan_line == 241 {
+                if self.control.nmi_vblank {
+                    *nmi = true;
+                }
             }
         }
     }
