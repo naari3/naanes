@@ -190,8 +190,9 @@ impl MemIO for PPU {
         match address {
             0x0000..=0x1FFF => self.chr_rom[address],
             0x2002 => {
+                let byte = self.status.get_as_u8();
                 self.status.clear_vblank();
-                self.status.get_as_u8()
+                byte
             }
             0x2007 => {
                 let mut addr = self.address.get() as usize & 0x3FFF;

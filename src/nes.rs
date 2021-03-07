@@ -45,6 +45,8 @@ impl NES {
                 );
                 if self.nmi {
                     self.cpu.interrupt(&mut bus, Interrupt::NMI);
+                    self.cpu.remain_cycles = 0;
+                    self.nmi = false;
                 }
                 self.cpu.step(&mut bus);
             }
