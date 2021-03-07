@@ -209,6 +209,30 @@ impl MemIO for PPU {
         }
     }
 
+    fn read_byte_without_effect(&mut self, address: usize) -> u8 {
+        match address {
+            0x0000..=0x1FFF => self.chr_rom[address],
+            0x2002 => self.status.get_as_u8(),
+            0x2007 => {
+                let mut addr = self.address.get() as usize & 0x3FFF;
+                if addr >= 0x3000 && addr <= 0x3EFF {
+                    addr -= 0x1000;
+                }
+                let byte = match address {
+                    // https://wiki.nesdev.com/w/index.php/PPU_memory_map
+                    0x0000..=0x0FFF => self.chr_rom[address],
+                    0x1000..=0x1FFF => self.chr_rom[address],
+                    0x2000..=0x2FFF => self.read_byte_from_nametable(address),
+                    0x3F00..=0x3F1F => self.palette_ram.read_byte(addr - 0x3F00),
+                    0x3F20..=0x3FFF => self.palette_ram.read_byte((addr - 0x3F20) & 0x1F),
+                    _ => 0,
+                };
+                byte
+            }
+            _ => 0,
+        }
+    }
+
     fn write_byte(&mut self, address: usize, byte: u8) {
         match address {
             0x2000 => self.control.set_as_u8(byte),
@@ -239,6 +263,9 @@ impl MemIO for PPU {
                 };
                 self.address
                     .increment_address(self.control.increment_address);
+            }
+            0x4014 => {
+                self.oam_dma.write_byte(byte);
             }
             _ => {}
         }
@@ -401,5 +428,12 @@ struct Data {
     addr: u16,
 }
 
+// $4014
 #[derive(Default, Debug)]
 struct OAMDMA {}
+
+impl OAMDMA {
+    pub fn write_byte(&mut self, byte: u8) {
+        println!("OAMDMA byte: 0x{:02X}", byte);
+    }
+}

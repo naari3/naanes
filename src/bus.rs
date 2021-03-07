@@ -27,7 +27,23 @@ impl<'a> MemIO for Bus<'a> {
             0x0000..=0x07FF => self.wram.read_byte(address),
             0x0800..=0x1FFF => self.wram.read_byte(address & 0x07FF),
             0x2000..=0x2007 => self.ppu.read_byte(address),
-            0x8000..=0xFFFF => self.prg_rom[self.mapper.mapping_address(address)],
+            0x8000..=0xFFFF => {
+                let a = self.mapper.mapping_address(address);
+                self.prg_rom[a]
+            }
+            _ => 0,
+        }
+    }
+
+    fn read_byte_without_effect(&mut self, address: usize) -> u8 {
+        match address {
+            0x0000..=0x07FF => self.wram.read_byte_without_effect(address),
+            0x0800..=0x1FFF => self.wram.read_byte_without_effect(address & 0x07FF),
+            0x2000..=0x2007 => self.ppu.read_byte_without_effect(address),
+            0x8000..=0xFFFF => {
+                let a = self.mapper.mapping_address(address);
+                self.prg_rom[a]
+            }
             _ => 0,
         }
     }
