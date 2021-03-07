@@ -71,17 +71,12 @@ impl PPU {
         if self.cycles == 1 {
             if self.scan_line == 241 {
                 self.status.set_vblank();
-            } else if self.scan_line == 261 {
-                self.status.clear_vblank();
-                self.status.clear_zero_hit();
-            }
-        }
-
-        if self.cycles == 10 {
-            if self.scan_line == 241 {
                 if self.control.nmi_vblank {
                     *nmi = true;
                 }
+            } else if self.scan_line == 261 {
+                self.status.clear_vblank();
+                self.status.clear_zero_hit();
             }
         }
     }
@@ -194,7 +189,10 @@ impl MemIO for PPU {
     fn read_byte(&mut self, address: usize) -> u8 {
         match address {
             0x0000..=0x1FFF => self.chr_rom[address],
-            0x2002 => self.status.get_as_u8(),
+            0x2002 => {
+                self.status.clear_vblank();
+                self.status.get_as_u8()
+            }
             0x2007 => {
                 let mut addr = self.address.get() as usize & 0x3FFF;
                 if addr >= 0x3000 && addr <= 0x3EFF {
