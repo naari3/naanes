@@ -1,3 +1,5 @@
+use piston_window::{clear, rectangle, PistonWindow, WindowSettings};
+
 use crate::{bus::Bus, ppu::PPU, rom::ROM};
 use emu6502::{
     cpu::{Interrupt, CPU},
@@ -10,6 +12,7 @@ pub struct NES {
     wram: RAM,
     rom: ROM,
     nmi: bool,
+    window: PistonWindow,
 }
 
 impl NES {
@@ -22,6 +25,10 @@ impl NES {
             wram: RAM::default(),
             rom,
             nmi: false,
+            window: WindowSettings::new("Hello Piston!", [640, 480])
+                .exit_on_esc(true)
+                .build()
+                .unwrap(),
         };
         nes.cpu.reset(&mut Bus::new(
             &mut nes.wram,
@@ -56,6 +63,17 @@ impl NES {
             loop_count += 1;
             if loop_count % 10000 == 0 {
                 snapshot(display, loop_count);
+            }
+            if let Some(event) = self.window.next() {
+                self.window.draw_2d(&event, |context, graphics, _device| {
+                    clear([1.0; 4], graphics);
+                    rectangle(
+                        [1.0, 0.0, 0.0, 1.0], // red
+                        [0.0, 0.0, 100.0, 100.0],
+                        context.transform,
+                        graphics,
+                    );
+                });
             }
         }
     }
