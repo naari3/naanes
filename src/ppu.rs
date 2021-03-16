@@ -98,9 +98,10 @@ impl PPU {
 
     fn get_background_pixel(&mut self, x: usize, y: usize) -> u8 {
         // it can be cached
-        let tile_number = self.vram[0x2000 + x / 8 + (y / 8) * 0x20];
+        let nametable_number = x / 0x08 + (y / 0x08) * 0x20;
+        let tile_number = self.vram[0x2000 + nametable_number];
         let tile = self.get_tile(tile_number);
-        let pal = self.get_palette_number((x / 8 + (y / 8) * 0x20) as u8);
+        let pal = self.get_palette_number(nametable_number);
         let c = tile[y % 8][7 - (x % 8)];
 
         if c == 0 {
@@ -139,9 +140,9 @@ impl PPU {
         tile
     }
 
-    fn get_palette_number(&mut self, nametable_number: u8) -> u8 {
-        let attr_addr_lower = nametable_number / 2;
-        let attr_addr_higher = (nametable_number / 0x10) / 2;
+    fn get_palette_number(&mut self, nametable_number: usize) -> u8 {
+        let attr_addr_lower = (nametable_number & 0x1F) / 4;
+        let attr_addr_higher = (nametable_number / 0x20) / 4;
         let attr_addr = attr_addr_lower + attr_addr_higher * 8;
         if attr_addr != 0 && attr_addr != 0x01 {
             println!(
@@ -149,9 +150,9 @@ impl PPU {
                 attr_addr, nametable_number
             );
         }
-        let attr_byte = self.palette_ram.read_byte(attr_addr as usize);
-        let low_addr = nametable_number % 2;
-        let high_addr = (nametable_number / 0x10) % 2;
+        let attr_byte = self.read_byte_from_nametable((attr_addr as usize) + 0x23C0);
+        let low_addr = (nametable_number % 4) / 2;
+        let high_addr = ((nametable_number / 0x20) % 4) / 2;
         let specific_bits = low_addr + high_addr * 2;
 
         match specific_bits {
