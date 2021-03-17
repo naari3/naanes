@@ -97,12 +97,11 @@ impl PPU {
     }
 
     fn get_background_pixel(&mut self, x: usize, y: usize) -> u8 {
-        // it can be cached
         let nametable_number = x / 0x08 + (y / 0x08) * 0x20;
         let tile_number = self.vram[0x2000 + nametable_number];
-        let tile = self.get_tile(tile_number);
+
+        let c = self.get_specified_in_tile(tile_number, x % 8, y % 8);
         let pal = self.get_palette_number(nametable_number);
-        let c = tile[y % 8][7 - (x % 8)];
 
         if c == 0 {
             self.palette_ram.read_byte(0)
@@ -135,6 +134,17 @@ impl PPU {
             tile.push(one_bar);
         }
         tile
+    }
+
+    // x: 0-7
+    // y: 0-7
+    fn get_specified_in_tile(&mut self, tile_number: u8, x: usize, y: usize) -> u8 {
+        let start_addr = tile_number as usize * 0x10;
+
+        let byte1 = self.read_byte(start_addr + y);
+        let byte2 = self.read_byte(start_addr + y + 8);
+
+        u8::from(byte1 & (1 << (7 - x)) != 0) + u8::from(byte2 & (1 << (7 - x)) != 0) << 1
     }
 
     fn get_palette_number(&mut self, nametable_number: usize) -> u8 {
