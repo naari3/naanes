@@ -1,6 +1,11 @@
 use std::time::Instant;
 
-use crate::{bus::Bus, ppu::PPU, rom::ROM};
+use crate::{
+    bus::Bus,
+    controller::{Button, ControllerInput},
+    ppu::PPU,
+    rom::ROM,
+};
 use emu6502::{
     cpu::{Interrupt, CPU},
     ram::RAM,
@@ -12,6 +17,7 @@ pub struct NES {
     wram: RAM,
     rom: ROM,
     nmi: bool,
+    controller: ControllerInput,
 }
 
 impl NES {
@@ -24,18 +30,19 @@ impl NES {
             wram: RAM::default(),
             rom,
             nmi: false,
+            controller: ControllerInput::new(0),
         };
         nes.cpu.reset(&mut Bus::new(
             &mut nes.wram,
             &mut nes.ppu,
             prg,
             nes.rom.mapper,
-            0,
+            &mut nes.controller,
         ));
         nes
     }
 
-    pub fn step(&mut self, display: &mut [[[u8; 3]; 256]; 240], input: u8) {
+    pub fn step(&mut self, display: &mut [[[u8; 3]; 256]; 240]) {
         let mut cycles = 0;
         while cycles < (341 / 3) * (262 + 1) {
             {
@@ -44,7 +51,7 @@ impl NES {
                     &mut self.ppu,
                     self.rom.prg.clone(),
                     self.rom.mapper,
-                    input,
+                    &mut self.controller,
                 );
                 if self.nmi {
                     self.cpu.interrupt(&mut bus, Interrupt::NMI);
@@ -66,7 +73,7 @@ impl NES {
 
         loop {
             let start = Instant::now();
-            self.step(display, 0);
+            self.step(display);
             let frame_duration = start.elapsed();
             total_frames += 1;
 
@@ -78,6 +85,18 @@ impl NES {
 
             snapshot(display, total_frames);
         }
+    }
+
+    pub fn update_input(&mut self, input: u8) {
+        self.controller.update_input(input);
+    }
+
+    pub fn press_button(&mut self, button: Button) {
+        self.controller.press_button(button);
+    }
+
+    pub fn release_button(&mut self, button: Button) {
+        self.controller.release_button(button);
     }
 }
 

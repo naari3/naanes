@@ -3,8 +3,8 @@ extern crate naanes;
 use std::time::Instant;
 
 use piston_window::{
-    clear, image as im_pis, G2dTexture, PistonWindow, Texture, TextureContext, TextureSettings,
-    Transformed, WindowSettings,
+    clear, image as im_pis, Button, G2dTexture, Key, PistonWindow, PressEvent, ReleaseEvent,
+    RenderEvent, Texture, TextureContext, TextureSettings, Transformed, WindowSettings,
 };
 
 fn main() {
@@ -32,30 +32,60 @@ fn main() {
     let mut total_frames = 0;
     loop {
         if let Some(event) = window.next() {
-            let start = Instant::now();
+            if let Some(_) = event.render_args() {
+                let start = Instant::now();
 
-            nes.step(&mut display_buffer, 0);
+                nes.step(&mut display_buffer);
 
-            let frame_duration = start.elapsed();
-            total_frames += 1;
-            println!(
-                "{} frames, fps: {:}",
-                total_frames,
-                1000.0 / frame_duration.as_millis() as f32
-            );
-            for (x, y, pixel) in buffer.enumerate_pixels_mut() {
-                let color = display_buffer[y as usize][x as usize];
-                *pixel = image::Rgba([color[0], color[1], color[2], 255]);
+                let frame_duration = start.elapsed();
+                total_frames += 1;
+                println!(
+                    "{} frames, fps: {:}",
+                    total_frames,
+                    1000.0 / frame_duration.as_millis() as f32
+                );
+                for (x, y, pixel) in buffer.enumerate_pixels_mut() {
+                    let color = display_buffer[y as usize][x as usize];
+                    *pixel = image::Rgba([color[0], color[1], color[2], 255]);
+                }
+
+                // snapshot(display, total_cycles);
+
+                texture.update(&mut texture_context, &buffer).unwrap();
+                window.draw_2d(&event, |context, graphics, device| {
+                    texture_context.encoder.flush(device);
+                    clear([1.0; 4], graphics);
+                    im_pis(&texture, context.transform.scale(scale, scale), graphics);
+                });
             }
 
-            // snapshot(display, total_cycles);
+            if let Some(Button::Keyboard(key)) = event.press_args() {
+                match key {
+                    Key::F => nes.press_button(naanes::controller::Button::A),
+                    Key::D => nes.press_button(naanes::controller::Button::B),
+                    Key::S => nes.press_button(naanes::controller::Button::Select),
+                    Key::A => nes.press_button(naanes::controller::Button::Start),
+                    Key::Up => nes.press_button(naanes::controller::Button::Up),
+                    Key::Down => nes.press_button(naanes::controller::Button::Down),
+                    Key::Left => nes.press_button(naanes::controller::Button::Left),
+                    Key::Right => nes.press_button(naanes::controller::Button::Right),
+                    _ => {}
+                }
+            }
 
-            texture.update(&mut texture_context, &buffer).unwrap();
-            window.draw_2d(&event, |context, graphics, device| {
-                texture_context.encoder.flush(device);
-                clear([1.0; 4], graphics);
-                im_pis(&texture, context.transform.scale(scale, scale), graphics);
-            });
+            if let Some(Button::Keyboard(key)) = event.release_args() {
+                match key {
+                    Key::F => nes.release_button(naanes::controller::Button::A),
+                    Key::D => nes.release_button(naanes::controller::Button::B),
+                    Key::S => nes.release_button(naanes::controller::Button::Select),
+                    Key::A => nes.release_button(naanes::controller::Button::Start),
+                    Key::Up => nes.release_button(naanes::controller::Button::Up),
+                    Key::Down => nes.release_button(naanes::controller::Button::Down),
+                    Key::Left => nes.release_button(naanes::controller::Button::Left),
+                    Key::Right => nes.release_button(naanes::controller::Button::Right),
+                    _ => {}
+                }
+            }
         }
     }
 }

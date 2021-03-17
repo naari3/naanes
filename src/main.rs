@@ -2,6 +2,7 @@
 
 mod bus;
 mod color;
+mod controller;
 mod mapper;
 mod nes;
 mod ppu;
