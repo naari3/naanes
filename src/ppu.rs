@@ -123,17 +123,15 @@ impl PPU {
 
         let mut tile = Vec::with_capacity(8);
         for i in 0..8 {
-            let mut bits1 = Vec::with_capacity(8);
-            let mut bits2 = Vec::with_capacity(8);
+            let byte1 = bytes[i];
+            let byte2 = bytes[i + 8];
+
+            let mut one_bar = Vec::with_capacity(8);
+
             for j in 0..8 {
-                bits1.push(bytes[i] & (1 << j) != 0);
-                bits2.push(bytes[i + 8] & (1 << j) != 0);
+                one_bar
+                    .push(u8::from(byte1 & (1 << j) != 0) + u8::from(byte2 & (1 << j) != 0) << 1);
             }
-            let one_bar = bits1
-                .iter()
-                .zip(bits2)
-                .map(|(b1, b2)| *b1 as u8 + ((b2 as u8) << 1))
-                .collect::<Vec<_>>();
             tile.push(one_bar);
         }
         tile
