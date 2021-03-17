@@ -26,12 +26,12 @@ pub struct PPU {
 }
 
 impl PPU {
-    pub fn new(mapper: Mapper) -> Self {
+    pub fn new(chr_rom: Vec<u8>, mapper: Mapper) -> Self {
         PPU {
             mapper,
             vram: RAM::new(vec![0; 0x4000]),
             palette_ram: RAM::new(vec![0; 0x20]),
-            chr_rom: vec![],
+            chr_rom,
             control: Control::default(),
             mask: Mask::default(),
             status: Status::default(),
