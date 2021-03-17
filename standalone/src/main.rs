@@ -34,7 +34,7 @@ fn main() {
         if let Some(event) = window.next() {
             let start = Instant::now();
 
-            nes.step(&mut display_buffer);
+            nes.step(&mut display_buffer, 0);
 
             let frame_duration = start.elapsed();
             total_frames += 1;

@@ -8,15 +8,23 @@ pub struct Bus<'a> {
     prg_rom: Vec<u8>,
     ppu: &'a mut PPU,
     mapper: Mapper,
+    input: u8,
 }
 
 impl<'a> Bus<'a> {
-    pub fn new(wram: &'a mut RAM, ppu: &'a mut PPU, prg_rom: Vec<u8>, mapper: Mapper) -> Bus<'a> {
+    pub fn new(
+        wram: &'a mut RAM,
+        ppu: &'a mut PPU,
+        prg_rom: Vec<u8>,
+        mapper: Mapper,
+        input: u8,
+    ) -> Bus<'a> {
         Bus {
             wram,
             prg_rom,
             ppu,
             mapper,
+            input,
         }
     }
 }
