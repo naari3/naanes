@@ -1,3 +1,5 @@
+use std::fs::File;
+
 use piston_window::{
     clear, image as im_pis, G2dTexture, PistonWindow, Texture, TextureContext, TextureSettings,
     Transformed, WindowSettings,
@@ -38,8 +40,11 @@ impl NES {
     }
 
     pub fn run(&mut self, display: &mut [[[u8; 3]; 256]; 240]) {
+        let guard = pprof::ProfilerGuard::new(100).unwrap();
+
         self.ppu.set_rom(self.rom.chr.clone(), self.rom.mapper);
         let mut total_cycles = 0;
+        let mut total_frames = 0;
 
         let scale = 3.0;
         let mut buffer = image::ImageBuffer::new(256, 240);
@@ -80,6 +85,8 @@ impl NES {
                     cycles += 1;
                     total_cycles += 1;
                 }
+                total_frames += 1;
+                println!("{} frames", total_frames);
                 for (x, y, pixel) in buffer.enumerate_pixels_mut() {
                     let color = display[y as usize][x as usize];
                     *pixel = image::Rgba([color[0], color[1], color[2], 255]);
@@ -93,6 +100,16 @@ impl NES {
                     clear([1.0; 4], graphics);
                     im_pis(&texture, context.transform.scale(scale, scale), graphics);
                 });
+
+                if total_frames > 20 {
+                    if let Ok(report) = guard.report().build() {
+                        let file = File::create("flamegraph.svg").unwrap();
+                        let mut options = pprof::flamegraph::Options::default();
+                        options.image_width = Some(2500);
+                        report.flamegraph_with_options(file, &mut options).unwrap();
+                    };
+                    return;
+                }
             }
         }
     }
