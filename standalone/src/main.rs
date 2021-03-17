@@ -3,8 +3,9 @@ extern crate naanes;
 use std::time::Instant;
 
 use piston_window::{
-    clear, image as im_pis, Button, G2dTexture, Key, PistonWindow, PressEvent, ReleaseEvent,
-    RenderEvent, Texture, TextureContext, TextureSettings, Transformed, WindowSettings,
+    clear, image as im_pis, Button, CloseEvent, G2dTexture, Key, PistonWindow, PressEvent,
+    ReleaseEvent, RenderEvent, Texture, TextureContext, TextureSettings, Transformed,
+    WindowSettings,
 };
 
 fn main() {
@@ -18,7 +19,6 @@ fn main() {
     let mut buffer = image::ImageBuffer::new(256, 240);
     let mut window: PistonWindow =
         WindowSettings::new("naanes", [256 as f64 * scale, 240 as f64 * scale])
-            .exit_on_esc(true)
             .samples(0)
             .build()
             .unwrap();
@@ -83,8 +83,13 @@ fn main() {
                     Key::Down => nes.release_button(naanes::controller::Button::Down),
                     Key::Left => nes.release_button(naanes::controller::Button::Left),
                     Key::Right => nes.release_button(naanes::controller::Button::Right),
+                    Key::Escape => break,
                     _ => {}
                 }
+            }
+
+            if let Some(_) = event.close_args() {
+                break;
             }
         }
     }
