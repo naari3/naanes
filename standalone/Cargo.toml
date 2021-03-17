@@ -9,5 +9,5 @@ edition = "2018"
 [dependencies]
 naanes = { path = ".." }
 image = "0.23.13"
-pprof = { version = "0.4", features = ["flamegraph"] }
+# pprof = { version = "0.4", features = ["flamegraph"] }
 piston_window = "*"
