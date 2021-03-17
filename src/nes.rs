@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::{fs::File, time::Instant};
 
 use piston_window::{
     clear, image as im_pis, G2dTexture, PistonWindow, Texture, TextureContext, TextureSettings,
@@ -63,6 +63,7 @@ impl NES {
 
         loop {
             if let Some(event) = window.next() {
+                let start = Instant::now();
                 let mut cycles = 0;
                 while cycles < (341 / 3) * (262 + 1) {
                     {
@@ -85,8 +86,13 @@ impl NES {
                     cycles += 1;
                     total_cycles += 1;
                 }
+                let frame_duration = start.elapsed();
                 total_frames += 1;
-                println!("{} frames", total_frames);
+                println!(
+                    "{} frames, fps: {:}",
+                    total_frames,
+                    1000.0 / frame_duration.as_millis() as f32
+                );
                 for (x, y, pixel) in buffer.enumerate_pixels_mut() {
                     let color = display[y as usize][x as usize];
                     *pixel = image::Rgba([color[0], color[1], color[2], 255]);
