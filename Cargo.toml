@@ -10,5 +10,3 @@ edition = "2018"
 # emu6502 = { git = "https://github.com/naari3/emu6502", rev = "b481518", features = ["logging"] }
 emu6502 = { git = "https://github.com/naari3/emu6502", rev = "b481518" }
 image = "0.23.13"
-pprof = { version = "0.4", features = ["flamegraph"] }
-piston_window = "*"
