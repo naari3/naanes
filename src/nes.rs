@@ -1,4 +1,7 @@
-use piston_window::{clear, rectangle, PistonWindow, WindowSettings};
+use piston_window::{
+    clear, image as im_pis, G2dTexture, PistonWindow, Texture, TextureContext, TextureSettings,
+    Transformed, WindowSettings,
+};
 
 use crate::{bus::Bus, ppu::PPU, rom::ROM};
 use emu6502::{
@@ -12,7 +15,6 @@ pub struct NES {
     wram: RAM,
     rom: ROM,
     nmi: bool,
-    window: PistonWindow,
 }
 
 impl NES {
@@ -25,10 +27,6 @@ impl NES {
             wram: RAM::default(),
             rom,
             nmi: false,
-            window: WindowSettings::new("Hello Piston!", [640, 480])
-                .exit_on_esc(true)
-                .build()
-                .unwrap(),
         };
         nes.cpu.reset(&mut Bus::new(
             &mut nes.wram,
@@ -41,38 +39,59 @@ impl NES {
 
     pub fn run(&mut self, display: &mut [[[u8; 3]; 256]; 240]) {
         self.ppu.set_rom(self.rom.chr.clone(), self.rom.mapper);
-        let mut loop_count = 0;
+        let mut total_cycles = 0;
+
+        let scale = 3.0;
+        let mut buffer = image::ImageBuffer::new(256, 240);
+        let mut window: PistonWindow =
+            WindowSettings::new("naanes", [256 as f64 * scale, 240 as f64 * scale])
+                .exit_on_esc(true)
+                .samples(0)
+                .build()
+                .unwrap();
+        let mut texture_context = TextureContext {
+            factory: window.factory.clone(),
+            encoder: window.factory.create_command_buffer().into(),
+        };
+        let mut texture: G2dTexture =
+            Texture::from_image(&mut texture_context, &buffer, &TextureSettings::new()).unwrap();
+
         loop {
-            {
-                let mut bus = Bus::new(
-                    &mut self.wram,
-                    &mut self.ppu,
-                    self.rom.prg.clone(),
-                    self.rom.mapper,
-                );
-                if self.nmi {
-                    self.cpu.interrupt(&mut bus, Interrupt::NMI);
-                    self.cpu.remain_cycles = 0;
-                    self.nmi = false;
+            if let Some(event) = window.next() {
+                let mut cycles = 0;
+                while cycles < (341 / 3) * (262 + 1) {
+                    {
+                        let mut bus = Bus::new(
+                            &mut self.wram,
+                            &mut self.ppu,
+                            self.rom.prg.clone(),
+                            self.rom.mapper,
+                        );
+                        if self.nmi {
+                            self.cpu.interrupt(&mut bus, Interrupt::NMI);
+                            self.cpu.remain_cycles = 0;
+                            self.nmi = false;
+                        }
+                        self.cpu.step(&mut bus);
+                    }
+                    for _ in 0..3 {
+                        self.ppu.step(display, &mut self.nmi);
+                    }
+                    cycles += 1;
+                    total_cycles += 1;
                 }
-                self.cpu.step(&mut bus);
-            }
-            self.ppu.step(display, &mut self.nmi);
-            self.ppu.step(display, &mut self.nmi);
-            self.ppu.step(display, &mut self.nmi);
-            loop_count += 1;
-            if loop_count % 10000 == 0 {
-                snapshot(display, loop_count);
-            }
-            if let Some(event) = self.window.next() {
-                self.window.draw_2d(&event, |context, graphics, _device| {
+                for (x, y, pixel) in buffer.enumerate_pixels_mut() {
+                    let color = display[y as usize][x as usize];
+                    *pixel = image::Rgba([color[0], color[1], color[2], 255]);
+                }
+
+                // snapshot(display, total_cycles);
+
+                texture.update(&mut texture_context, &buffer).unwrap();
+                window.draw_2d(&event, |context, graphics, device| {
+                    texture_context.encoder.flush(device);
                     clear([1.0; 4], graphics);
-                    rectangle(
-                        [1.0, 0.0, 0.0, 1.0], // red
-                        [0.0, 0.0, 100.0, 100.0],
-                        context.transform,
-                        graphics,
-                    );
+                    im_pis(&texture, context.transform.scale(scale, scale), graphics);
                 });
             }
         }
