@@ -120,19 +120,18 @@ impl PPU {
             .enumerate()
             .map(|(i, addr)| self.read_byte(*addr as usize + i))
             .collect::<Vec<_>>();
-        let to_bits = |uint| {
-            [()].iter()
-                .cycle()
-                .take(8)
-                .enumerate()
-                .map(|(j, _)| uint >> j & 1 == 1)
-                .collect::<Vec<_>>()
-        };
-        let mut tile = Vec::new();
+
+        let mut tile = Vec::with_capacity(8);
         for i in 0..8 {
-            let one_bar = to_bits(bytes[i])
+            let mut bits1 = Vec::with_capacity(8);
+            let mut bits2 = Vec::with_capacity(8);
+            for j in 0..8 {
+                bits1.push(bytes[i] & (1 << j) != 0);
+                bits2.push(bytes[i + 8] & (1 << j) != 0);
+            }
+            let one_bar = bits1
                 .iter()
-                .zip(to_bits(bytes[i + 8]))
+                .zip(bits2)
                 .map(|(b1, b2)| *b1 as u8 + ((b2 as u8) << 1))
                 .collect::<Vec<_>>();
             tile.push(one_bar);
@@ -144,12 +143,6 @@ impl PPU {
         let attr_addr_lower = (nametable_number & 0x1F) / 4;
         let attr_addr_higher = (nametable_number / 0x20) / 4;
         let attr_addr = attr_addr_lower + attr_addr_higher * 8;
-        if attr_addr != 0 && attr_addr != 0x01 {
-            println!(
-                "attr_addr: 0x{:02X}, nametable_number: 0x{:02X}",
-                attr_addr, nametable_number
-            );
-        }
         let attr_byte = self.read_byte_from_nametable((attr_addr as usize) + 0x23C0);
         let low_addr = (nametable_number % 4) / 2;
         let high_addr = ((nametable_number / 0x20) % 4) / 2;
