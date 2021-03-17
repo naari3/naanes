@@ -87,14 +87,17 @@ impl NES {
         }
     }
 
+    #[allow(dead_code)]
     pub fn update_input(&mut self, input: u8) {
         self.controller.update_input(input);
     }
 
+    #[allow(dead_code)]
     pub fn press_button(&mut self, button: Button) {
         self.controller.press_button(button);
     }
 
+    #[allow(dead_code)]
     pub fn release_button(&mut self, button: Button) {
         self.controller.release_button(button);
     }

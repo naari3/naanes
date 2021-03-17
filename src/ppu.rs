@@ -110,6 +110,7 @@ impl PPU {
         }
     }
 
+    #[allow(dead_code)]
     fn get_tile(&mut self, tile_number: u8) -> Vec<Vec<u8>> {
         let start_addr = tile_number as usize * 0x10;
         let bytes = [start_addr]
@@ -373,6 +374,7 @@ impl Status {
         self.vblank = false;
     }
 
+    #[allow(dead_code)]
     fn set_zero_hit(&mut self) {
         self.sprite_zero_hit = true;
     }

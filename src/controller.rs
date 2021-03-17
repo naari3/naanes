@@ -13,10 +13,12 @@ impl ControllerInput {
         }
     }
 
+    #[allow(dead_code)]
     pub fn update_input(&mut self, byte: u8) {
         self.input = byte;
     }
 
+    #[allow(dead_code)]
     pub fn press_button(&mut self, button: Button) {
         match button {
             Button::A => self.input = self.input | 0x01,
@@ -30,6 +32,7 @@ impl ControllerInput {
         }
     }
 
+    #[allow(dead_code)]
     pub fn release_button(&mut self, button: Button) {
         match button {
             Button::A => self.input = self.input & !0x01,
@@ -65,6 +68,7 @@ impl ControllerInput {
     }
 }
 
+#[allow(dead_code)]
 pub enum Button {
     A,
     B,
