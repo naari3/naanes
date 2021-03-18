@@ -71,9 +71,13 @@ impl PPU {
 
     fn update_status(&mut self, _display: &mut [[[u8; 3]; 256]; 240], nmi: &mut bool) {
         // at leach new scan line...
+        if self.has_zero_sprite_hit() {
+            self.status.set_zero_hit();
+        }
         if self.cycles == 1 {
             if self.scan_line == 241 {
                 self.status.set_vblank();
+                self.status.clear_zero_hit();
                 if self.control.nmi_vblank {
                     *nmi = true;
                 }
@@ -82,6 +86,16 @@ impl PPU {
                 self.status.clear_zero_hit();
             }
         }
+    }
+
+    fn has_zero_sprite_hit(&mut self) -> bool {
+        let zero = self.oam.get(0);
+        let x = zero.x;
+        let y = zero.y;
+        if x != 0 && y != 0 {
+            println!("x: {}, y: {}", x, y);
+        }
+        (x == ((self.cycles - 1) as u8)) && (y == self.scan_line as u8)
     }
 
     fn render_pixel(&mut self, display: &mut [[[u8; 3]; 256]; 240]) {
@@ -616,5 +630,9 @@ impl OAM {
             }
             _ => panic!("unreechable"),
         }
+    }
+
+    fn get(&self, index: usize) -> Sprite {
+        self.inner[index]
     }
 }
