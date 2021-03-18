@@ -9,7 +9,7 @@ use piston_window::{
 };
 
 fn main() {
-    let rom_buffer = include_bytes!("../../nestest.nes").to_vec();
+    let rom_buffer = include_bytes!("../../roms/nestest.nes").to_vec();
     let rom = naanes::rom::parse(rom_buffer);
     let mut nes = naanes::nes::NES::new(rom);
 

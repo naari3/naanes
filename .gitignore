@@ -2,4 +2,5 @@
 a.png
 a*.png
 *.nes
+!/roms/*.nes
 *.prg

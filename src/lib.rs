@@ -14,7 +14,7 @@ mod tests {
 
     #[test]
     fn test_nestest() {
-        let rom_buffer = include_bytes!("../nestest.nes").to_vec();
+        let rom_buffer = include_bytes!("../roms/nestest.nes").to_vec();
         let rom = rom::parse(rom_buffer);
         let mut nes = nes::NES::new(rom);
 

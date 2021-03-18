@@ -9,7 +9,7 @@ mod bench {
     /// Hello, World表示にかかる時間計測
     #[bench]
     fn bench_hello(b: &mut Bencher) {
-        let rom_buffer = include_bytes!("../nestest.nes").to_vec();
+        let rom_buffer = include_bytes!("../roms/nestest.nes").to_vec();
         let rom = rom::parse(rom_buffer);
         let mut nes = nes::NES::new(rom);
 
