@@ -106,7 +106,7 @@ impl PPU {
         if c == 0 {
             self.palette_ram.read_byte(0)
         } else {
-            self.palette_ram.read_byte((pal * 3 + c) as usize)
+            self.palette_ram.read_byte((pal * 4 + c) as usize) // maybe?
         }
     }
 
