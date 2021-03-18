@@ -98,7 +98,7 @@ impl PPU {
 
     fn get_background_pixel(&mut self, x: usize, y: usize) -> u8 {
         let nametable_number = x / 0x08 + (y / 0x08) * 0x20;
-        let tile_number = self.vram[0x2000 + nametable_number];
+        let tile_number = self.vram[self.control.get_nametable_base_address() + nametable_number];
 
         let c = self.get_specified_in_tile(tile_number, x % 8, y % 8);
         let pal = self.get_palette_number(nametable_number);
@@ -112,7 +112,8 @@ impl PPU {
 
     #[allow(dead_code)]
     fn get_tile(&mut self, tile_number: u8) -> Vec<Vec<u8>> {
-        let start_addr = tile_number as usize * 0x10;
+        let start_addr =
+            self.control.get_background_pattern_table_base_address() + tile_number as usize * 0x10;
         let bytes = [start_addr]
             .iter()
             .cycle()
@@ -140,7 +141,8 @@ impl PPU {
     // x: 0-7
     // y: 0-7
     fn get_specified_in_tile(&mut self, tile_number: u8, x: usize, y: usize) -> u8 {
-        let start_addr = tile_number as usize * 0x10;
+        let start_addr =
+            self.control.get_background_pattern_table_base_address() + tile_number as usize * 0x10;
 
         let byte1 = self.read_byte(start_addr + y);
         let byte2 = self.read_byte(start_addr + y + 8);
@@ -152,7 +154,9 @@ impl PPU {
         let attr_addr_lower = (nametable_number & 0x1F) / 4;
         let attr_addr_higher = (nametable_number / 0x20) / 4;
         let attr_addr = attr_addr_lower + attr_addr_higher * 8;
-        let attr_byte = self.read_byte_from_nametable((attr_addr as usize) + 0x23C0);
+        let attr_byte = self.read_byte_from_nametable(
+            (attr_addr as usize) + self.control.get_nametable_base_address() + 0x3C0,
+        );
         let low_addr = (nametable_number % 4) / 2;
         let high_addr = ((nametable_number / 0x20) % 4) / 2;
         let specific_bits = low_addr + high_addr * 2;
@@ -322,6 +326,24 @@ impl Control {
         self.sprites_size = byte & 0b00100000 > 0;
         self.master_slave = byte & 0b01000000 > 0;
         self.nmi_vblank = byte & 0b10000000 > 0;
+    }
+
+    pub fn get_nametable_base_address(&self) -> usize {
+        match self.name_table {
+            0b00 => 0x2000,
+            0b01 => 0x2400,
+            0b10 => 0x2800,
+            0b11 => 0x2C00,
+            _ => 0,
+        }
+    }
+
+    pub fn get_background_pattern_table_base_address(&self) -> usize {
+        if self.background_pattern_table {
+            0x1000
+        } else {
+            0x0
+        }
     }
 }
 
