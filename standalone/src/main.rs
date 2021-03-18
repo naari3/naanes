@@ -37,13 +37,6 @@ fn main() {
 
                 nes.step(&mut display_buffer);
 
-                let frame_duration = start.elapsed();
-                total_frames += 1;
-                println!(
-                    "{} frames, fps: {:}",
-                    total_frames,
-                    1000.0 / frame_duration.as_millis() as f32
-                );
                 for (x, y, pixel) in buffer.enumerate_pixels_mut() {
                     let color = display_buffer[y as usize][x as usize];
                     *pixel = image::Rgba([color[0], color[1], color[2], 255]);
@@ -57,6 +50,13 @@ fn main() {
                     clear([1.0; 4], graphics);
                     im_pis(&texture, context.transform.scale(scale, scale), graphics);
                 });
+                total_frames += 1;
+                let frame_duration = start.elapsed();
+                println!(
+                    "{} frames, fps: {:}",
+                    total_frames,
+                    1000.0 / frame_duration.as_millis() as f32
+                );
             }
 
             if let Some(Button::Keyboard(key)) = event.press_args() {
