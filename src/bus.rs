@@ -63,6 +63,7 @@ impl<'a> MemIO for Bus<'a> {
             0x0000..=0x07FF => self.wram.write_byte(address, byte),
             0x0800..=0x1FFF => self.wram.write_byte(address & 0x07FF, byte),
             0x2000..=0x2007 => self.ppu.write_byte(address, byte),
+            0x4014 => self.ppu.write_byte(address, byte),
             0x4016 => self.controller.write_byte(byte),
             0x8000..=0xFFFF => {}
             _ => {}

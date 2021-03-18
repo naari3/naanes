@@ -92,10 +92,7 @@ impl PPU {
         let zero = self.oam.get(0);
         let x = zero.x;
         let y = zero.y;
-        if x != 0 && y != 0 {
-            println!("x: {}, y: {}", x, y);
-        }
-        (x == ((self.cycles - 1) as u8)) && (y == self.scan_line as u8)
+        (x as usize == (self.cycles)) && (y as usize == self.scan_line)
     }
 
     fn render_pixel(&mut self, display: &mut [[[u8; 3]; 256]; 240]) {
