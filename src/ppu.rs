@@ -21,6 +21,8 @@ pub struct PPU {
 
     oam_dma: OAMDMA, // $4014
 
+    oam: [Sprite; 64],
+
     cycles: usize,
     scan_line: usize,
 }
@@ -41,6 +43,7 @@ impl PPU {
             address: Address::default(),
             data: Data::default(),
             oam_dma: OAMDMA::default(),
+            oam: [Sprite::default(); 64],
             cycles: 0,
             scan_line: 0,
         }
@@ -414,7 +417,6 @@ struct OAMAddress {
 
 impl OAMAddress {
     pub fn write_byte(&mut self, byte: u8) {
-        println!("OAMAddress byte: 0x{:02X}", byte);
         self.addr = byte;
     }
 }
@@ -488,4 +490,20 @@ impl OAMDMA {
     pub fn write_byte(&mut self, byte: u8) {
         println!("OAMDMA byte: 0x{:02X}", byte);
     }
+}
+
+#[derive(Default, Debug, Clone, Copy)]
+struct Sprite {
+    y: u8,
+    tile_number: u8,
+    attribute: SpriteAttribute,
+    x: u8,
+}
+
+#[derive(Default, Debug, Clone, Copy)]
+struct SpriteAttribute {
+    vflip: bool,
+    hflip: bool,
+    priority: bool,
+    c: u8,
 }
