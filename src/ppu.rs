@@ -21,7 +21,7 @@ pub struct PPU {
 
     oam_dma: OAMDMA, // $4014
 
-    oam: [Sprite; 64],
+    oam: OAM,
 
     cycles: usize,
     scan_line: usize,
@@ -43,7 +43,7 @@ impl PPU {
             address: Address::default(),
             data: Data::default(),
             oam_dma: OAMDMA::default(),
-            oam: [Sprite::default(); 64],
+            oam: OAM::default(),
             cycles: 0,
             scan_line: 0,
         }
@@ -211,6 +211,22 @@ impl PPU {
                 }
             },
         }
+    }
+
+    pub fn oam_dma_status(&self) -> OAMDMAStatus {
+        self.oam_dma.status
+    }
+
+    pub fn start_oam_dma(&mut self) {
+        self.oam_dma.start();
+    }
+
+    pub fn oam_dma_write(&mut self, byte: u8) {
+        self.oam.write_byte(
+            (0x100 - self.oam_dma.remains + self.oam_address.addr as usize) % 100,
+            byte,
+        );
+        self.oam_dma.tick();
     }
 }
 
@@ -482,13 +498,47 @@ struct Data {
     addr: u16,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum OAMDMAStatus {
+    NotRunning,
+    Waiting,
+    Running(usize),
+}
+
+impl Default for OAMDMAStatus {
+    fn default() -> Self {
+        Self::NotRunning
+    }
+}
+
 // $4014
 #[derive(Default, Debug)]
-struct OAMDMA {}
+struct OAMDMA {
+    status: OAMDMAStatus,
+    current_addr: usize,
+    remains: usize,
+}
 
 impl OAMDMA {
-    pub fn write_byte(&mut self, byte: u8) {
-        println!("OAMDMA byte: 0x{:02X}", byte);
+    fn write_byte(&mut self, byte: u8) {
+        println!("START OAMDMA");
+        self.current_addr = (byte as usize) << 8;
+        self.status = OAMDMAStatus::Waiting;
+        self.remains = 0x100;
+    }
+
+    fn start(&mut self) {
+        self.status = OAMDMAStatus::Running(self.current_addr);
+    }
+
+    fn tick(&mut self) {
+        self.current_addr += 1;
+        self.remains -= 1;
+        if self.remains == 0 {
+            self.status = OAMDMAStatus::NotRunning;
+        } else {
+            self.status = OAMDMAStatus::Running(self.current_addr);
+        }
     }
 }
 
@@ -500,10 +550,71 @@ struct Sprite {
     x: u8,
 }
 
+impl Sprite {
+    fn set_y(&mut self, y: u8) {
+        self.y = y;
+    }
+
+    fn set_tile_number(&mut self, tile_number: u8) {
+        self.tile_number = tile_number;
+    }
+
+    fn set_attribute(&mut self, attribute: u8) {
+        self.attribute.set_as_u8(attribute);
+    }
+
+    fn set_x(&mut self, x: u8) {
+        self.x = x;
+    }
+}
+
 #[derive(Default, Debug, Clone, Copy)]
 struct SpriteAttribute {
     vflip: bool,
     hflip: bool,
     priority: bool,
     c: u8,
+}
+
+impl SpriteAttribute {
+    fn set_as_u8(&mut self, byte: u8) {
+        self.c = byte & 0b11;
+        self.priority = byte & 0b00100000 > 0;
+        self.hflip = byte & 0b01000000 > 0;
+        self.vflip = byte & 0b10000000 > 0;
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct OAM {
+    inner: [Sprite; 64],
+}
+
+impl Default for OAM {
+    fn default() -> Self {
+        Self {
+            inner: [Sprite::default(); 64],
+        }
+    }
+}
+
+impl OAM {
+    fn write_byte(&mut self, address: usize, byte: u8) {
+        let idx = address / 4;
+        match address % 4 {
+            0 => {
+                self.inner[idx].set_y(byte);
+            }
+            1 => {
+                self.inner[idx].set_tile_number(byte);
+            }
+            2 => {
+                self.inner[idx].set_attribute(byte);
+            }
+            3 => {
+                self.inner[idx].set_x(byte);
+            }
+            _ => panic!("unreechable"),
+        }
+    }
 }

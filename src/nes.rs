@@ -3,12 +3,12 @@ use std::time::Instant;
 use crate::{
     bus::Bus,
     controller::{Button, ControllerInput},
-    ppu::PPU,
+    ppu::{OAMDMAStatus, PPU},
     rom::ROM,
 };
 use emu6502::{
     cpu::{Interrupt, CPU},
-    ram::RAM,
+    ram::{MemIO, RAM},
 };
 
 pub struct NES {
@@ -42,10 +42,11 @@ impl NES {
         nes
     }
 
+    // TODO: more consider interrupt timing
     pub fn step(&mut self, display: &mut [[[u8; 3]; 256]; 240]) {
         let mut cycles = 0;
         while cycles < (341 / 3) * (262 + 1) {
-            {
+            if let OAMDMAStatus::NotRunning = self.ppu.oam_dma_status() {
                 let mut bus = Bus::new(
                     &mut self.wram,
                     &mut self.ppu,
@@ -53,15 +54,44 @@ impl NES {
                     self.rom.mapper,
                     &mut self.controller,
                 );
+                self.cpu.step(&mut bus);
+            }
+            if let OAMDMAStatus::Running(address) = self.ppu.oam_dma_status() {
+                let byte = {
+                    let mut bus = Bus::new(
+                        &mut self.wram,
+                        &mut self.ppu,
+                        self.rom.prg.clone(),
+                        self.rom.mapper,
+                        &mut self.controller,
+                    );
+                    bus.read_byte(address)
+                };
+                self.ppu.oam_dma_write(byte)
+            }
+
+            for _ in 0..3 {
+                self.ppu.step(display, &mut self.nmi);
                 if self.nmi {
+                    let mut bus = Bus::new(
+                        &mut self.wram,
+                        &mut self.ppu,
+                        self.rom.prg.clone(),
+                        self.rom.mapper,
+                        &mut self.controller,
+                    );
                     self.cpu.interrupt(&mut bus, Interrupt::NMI);
                     self.cpu.remain_cycles = 0;
                     self.nmi = false;
                 }
-                self.cpu.step(&mut bus);
             }
-            for _ in 0..3 {
-                self.ppu.step(display, &mut self.nmi);
+
+            if let OAMDMAStatus::Waiting = self.ppu.oam_dma_status() {
+                // TODO: Check it's correctly
+                if cycles % 2 == 0 {
+                    self.ppu.start_oam_dma();
+                    self.cpu.remain_cycles = 512;
+                }
             }
             cycles += 1;
         }
