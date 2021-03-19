@@ -23,7 +23,7 @@ pub struct NES {
 impl NES {
     pub fn new(rom: ROM) -> NES {
         let ppu = PPU::new(rom.chr.clone(), rom.mapper);
-        let prg = rom.prg.clone();
+        let mut prg = rom.prg.clone();
         let mut nes = NES {
             cpu: CPU::default(),
             ppu,
@@ -35,7 +35,7 @@ impl NES {
         nes.cpu.reset(&mut Bus::new(
             &mut nes.wram,
             &mut nes.ppu,
-            prg,
+            &mut prg,
             nes.rom.mapper,
             &mut nes.controller,
         ));
@@ -50,7 +50,7 @@ impl NES {
                 let mut bus = Bus::new(
                     &mut self.wram,
                     &mut self.ppu,
-                    self.rom.prg.clone(),
+                    &mut self.rom.prg,
                     self.rom.mapper,
                     &mut self.controller,
                 );
@@ -61,7 +61,7 @@ impl NES {
                     let mut bus = Bus::new(
                         &mut self.wram,
                         &mut self.ppu,
-                        self.rom.prg.clone(),
+                        &mut self.rom.prg,
                         self.rom.mapper,
                         &mut self.controller,
                     );
@@ -76,7 +76,7 @@ impl NES {
                     let mut bus = Bus::new(
                         &mut self.wram,
                         &mut self.ppu,
-                        self.rom.prg.clone(),
+                        &mut self.rom.prg,
                         self.rom.mapper,
                         &mut self.controller,
                     );

@@ -5,7 +5,7 @@ use crate::{controller::ControllerInput, mapper::Mapper, ppu::PPU};
 
 pub struct Bus<'a> {
     wram: &'a mut RAM,
-    prg_rom: Vec<u8>,
+    prg_rom: &'a mut Vec<u8>,
     ppu: &'a mut PPU,
     mapper: Mapper,
     controller: &'a mut ControllerInput,
@@ -15,7 +15,7 @@ impl<'a> Bus<'a> {
     pub fn new(
         wram: &'a mut RAM,
         ppu: &'a mut PPU,
-        prg_rom: Vec<u8>,
+        prg_rom: &'a mut Vec<u8>,
         mapper: Mapper,
         controller: &'a mut ControllerInput,
     ) -> Bus<'a> {
