@@ -71,9 +71,6 @@ impl PPU {
 
     fn update_status(&mut self, _display: &mut [[[u8; 3]; 256]; 240], nmi: &mut bool) {
         // at leach new scan line...
-        if self.has_zero_sprite_hit() {
-            self.status.set_zero_hit();
-        }
         if self.cycles == 1 {
             if self.scan_line == 241 {
                 self.status.set_vblank();
@@ -88,13 +85,6 @@ impl PPU {
         }
     }
 
-    fn has_zero_sprite_hit(&mut self) -> bool {
-        let zero = self.oam.get(0);
-        let x = zero.x;
-        let y = zero.y;
-        (x as usize == (self.cycles)) && (y as usize == self.scan_line)
-    }
-
     fn render_pixel(&mut self, display: &mut [[[u8; 3]; 256]; 240]) {
         if self.cycles >= 257 || self.scan_line >= 240 || self.cycles == 0 {
             return;
@@ -103,11 +93,28 @@ impl PPU {
         let x = self.cycles - 1;
         let y = self.scan_line;
 
-        let c = self.get_background_pixel(x, y);
-        let c = Color::from(c);
+        let c_byte = self.get_background_pixel(x, y);
+        let c = Color::from(c_byte);
         display[y][x][0] = c.0;
         display[y][x][1] = c.1;
         display[y][x][2] = c.2;
+
+        // https://wiki.nesdev.com/w/index.php/PPU_OAM#Sprite_zero_hits
+        let zero = self.oam.get(0);
+        // not (sprite 0 hit has already occurred this frame)
+        if !self.status.sprite_zero_hit
+            // not (At x=255)
+            && !(x == 255)
+            // opaque pixel of sprite 0 overlaps an opaque pixel of the background
+            && (zero.x as usize) == x
+            && (zero.y as usize) == y
+            // not (At x=0 to x=7 if the left-side clipping window is enabled (if bit 2 or bit 1 of PPUMASK is 0))
+            && !((0..=7).contains(&x) && (self.mask.sprite_left_column || self.mask.background_left_column))
+            // not (At any pixel where the background or sprite pixel is transparent (half TODO))
+            && !(c_byte == 0)
+        {
+            self.status.set_zero_hit();
+        }
     }
 
     fn get_background_pixel(&mut self, x: usize, y: usize) -> u8 {
