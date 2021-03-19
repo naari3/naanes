@@ -532,7 +532,6 @@ struct OAMDMA {
 
 impl OAMDMA {
     fn write_byte(&mut self, byte: u8) {
-        println!("START OAMDMA");
         self.current_addr = (byte as usize) << 8;
         self.status = OAMDMAStatus::Waiting;
         self.remains = 0x100;
