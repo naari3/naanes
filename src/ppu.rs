@@ -241,7 +241,7 @@ impl PPU {
 
     pub fn oam_dma_write(&mut self, byte: u8) {
         self.oam.write_byte(
-            (0x100 - self.oam_dma.remains + self.oam_address.addr as usize) % 100,
+            (0x100 - self.oam_dma.remains + self.oam_address.addr as usize) % 0x100,
             byte,
         );
         self.oam_dma.tick();

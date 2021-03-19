@@ -90,7 +90,6 @@ impl NES {
                 // TODO: Check it's correctly
                 if cycles % 2 == 0 {
                     self.ppu.start_oam_dma();
-                    self.cpu.remain_cycles = 512;
                 }
             }
             cycles += 1;
