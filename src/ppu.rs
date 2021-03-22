@@ -106,11 +106,12 @@ impl PPU {
             }
             // rendering...
             for s in sprites.iter() {
-                for i in (0..8).rev() {
+                for i in 0..8 {
                     if s.x as usize + i < 256 {
+                        let tile_x = if s.attribute.hflip { 7 - i } else { i };
                         let c = self.get_specified_in_sprite_tile(
                             s.tile_number,
-                            i,
+                            tile_x,
                             self.scan_line - s.y as usize,
                         );
 
