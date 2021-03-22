@@ -22,6 +22,8 @@ pub struct PPU {
     oam_dma: OAMDMA, // $4014
 
     oam: OAM,
+    secondary_oam: OAM,
+    sprite_temporary_buffer: [u8; 256],
 
     cycles: usize,
     scan_line: usize,
@@ -43,7 +45,9 @@ impl PPU {
             address: Address::default(),
             data: Data::default(),
             oam_dma: OAMDMA::default(),
-            oam: OAM::default(),
+            oam: OAM::new(64),
+            secondary_oam: OAM::new(8),
+            sprite_temporary_buffer: [0; 256],
             cycles: 0,
             scan_line: 0,
         }
@@ -51,6 +55,7 @@ impl PPU {
 
     pub fn step(&mut self, display: &mut [[[u8; 3]; 256]; 240], nmi: &mut bool) {
         self.render_pixel(display);
+        self.evaluate_sprites();
         self.update_status(display, nmi);
         self.tick();
     }
@@ -65,6 +70,49 @@ impl PPU {
 
             if self.scan_line > 261 {
                 self.scan_line = 0;
+            }
+        }
+    }
+
+    // ref: https://wiki.nesdev.com/w/index.php/PPU_sprite_evaluation
+    fn evaluate_sprites(&mut self) {
+        if self.scan_line >= 240 {
+            return;
+        }
+
+        // Cycles 1-64: Secondary OAM (32-byte buffer for current sprites on scanline) is initialized to $FF
+        if self.cycles == 0 {
+            self.secondary_oam.initialize();
+        } else if self.cycles == 64 {
+            // Cycles 65-256: Sprite evaluation
+            let mut found_count = 0;
+            let mut sprites = Vec::with_capacity(8);
+            for &s in self.oam.iter() {
+                if s.y >= 240 {
+                    continue;
+                }
+                if ((s.y)..(s.y + 8)).contains(&(self.scan_line as u8)) {
+                    self.secondary_oam.set_sprite(found_count, s.clone());
+                    sprites.push(s);
+                    // self.sprite_temporary_buffer[]
+                    found_count += 1;
+                    if found_count == 7 {
+                        self.status.sprite_overflow = true;
+                        break;
+                    }
+                }
+            }
+            for s in sprites.iter() {
+                for i in (0..8).rev() {
+                    let c = self.get_specified_in_sprite_tile(
+                        s.tile_number,
+                        i,
+                        self.scan_line - s.y as usize,
+                    );
+                    if s.x as usize + i < 256 {
+                        self.sprite_temporary_buffer[s.x as usize + i] = c;
+                    }
+                }
             }
         }
     }
@@ -93,7 +141,10 @@ impl PPU {
         let x = self.cycles - 1;
         let y = self.scan_line;
 
-        let c_byte = self.get_background_pixel(x, y);
+        let mut c_byte = self.sprite_temporary_buffer[x];
+        if c_byte == 0 {
+            c_byte = self.get_background_pixel(x, y);
+        }
         let c = Color::from(c_byte);
         display[y][x][0] = c.0;
         display[y][x][1] = c.1;
@@ -164,6 +215,18 @@ impl PPU {
     fn get_specified_in_tile(&mut self, tile_number: u8, x: usize, y: usize) -> u8 {
         let start_addr =
             self.control.get_background_pattern_table_base_address() + tile_number as usize * 0x10;
+
+        let byte1 = self.read_byte(start_addr + y);
+        let byte2 = self.read_byte(start_addr + y + 8);
+
+        u8::from(byte1 & (1 << (7 - x)) != 0) + u8::from(byte2 & (1 << (7 - x)) != 0) << 1
+    }
+
+    // x: 0-7
+    // y: 0-7
+    fn get_specified_in_sprite_tile(&mut self, tile_number: u8, x: usize, y: usize) -> u8 {
+        let start_addr =
+            self.control.get_sprites_pattern_table_base_address() + tile_number as usize * 0x10;
 
         let byte1 = self.read_byte(start_addr + y);
         let byte2 = self.read_byte(start_addr + y + 8);
@@ -372,6 +435,14 @@ impl Control {
             0b10 => 0x2800,
             0b11 => 0x2C00,
             _ => 0,
+        }
+    }
+
+    pub fn get_sprites_pattern_table_base_address(&self) -> usize {
+        if self.sprites_pattern_table {
+            0x1000
+        } else {
+            0x0
         }
     }
 
@@ -602,15 +673,24 @@ impl SpriteAttribute {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 struct OAM {
-    inner: [Sprite; 64],
+    inner: Vec<Sprite>,
 }
 
-impl Default for OAM {
-    fn default() -> Self {
+impl OAM {
+    fn new(capacity: usize) -> Self {
         Self {
-            inner: [Sprite::default(); 64],
+            inner: vec![Sprite::default(); capacity],
+        }
+    }
+
+    fn initialize(&mut self) {
+        for s in self.inner.iter_mut() {
+            s.y = 0xFF;
+            s.tile_number = 0xFF;
+            s.attribute.set_as_u8(0xFF);
+            s.x = 0xFF;
         }
     }
 }
@@ -635,7 +715,29 @@ impl OAM {
         }
     }
 
-    fn get(&self, index: usize) -> Sprite {
-        self.inner[index]
+    fn get(&self, index: usize) -> &Sprite {
+        &self.inner[index]
+    }
+
+    fn set_sprite(&mut self, index: usize, sprite: Sprite) {
+        self.inner[index] = sprite;
+    }
+
+    fn iter<'a>(&'a self) -> IterOAM<'a> {
+        IterOAM {
+            inner: self.inner.iter(),
+        }
+    }
+}
+
+struct IterOAM<'a> {
+    inner: std::slice::Iter<'a, Sprite>,
+}
+
+impl<'a> Iterator for IterOAM<'a> {
+    type Item = &'a Sprite;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next()
     }
 }
