@@ -219,7 +219,7 @@ impl PPU {
         let byte1 = self.read_byte(start_addr + y);
         let byte2 = self.read_byte(start_addr + y + 8);
 
-        u8::from(byte1 & (1 << (7 - x)) != 0) + u8::from(byte2 & (1 << (7 - x)) != 0) << 1
+        u8::from(byte1 & (1 << (7 - x)) != 0) + (u8::from(byte2 & (1 << (7 - x)) != 0) << 1)
     }
 
     // x: 0-7
@@ -231,7 +231,7 @@ impl PPU {
         let byte1 = self.read_byte(start_addr + y);
         let byte2 = self.read_byte(start_addr + y + 8);
 
-        u8::from(byte1 & (1 << (7 - x)) != 0) + u8::from(byte2 & (1 << (7 - x)) != 0) << 1
+        u8::from(byte1 & (1 << (7 - x)) != 0) + (u8::from(byte2 & (1 << (7 - x)) != 0) << 1)
     }
 
     fn get_palette_number(&mut self, nametable_number: usize) -> u8 {
