@@ -24,6 +24,7 @@ pub struct PPU {
     oam: OAM,
     secondary_oam: OAM,
     sprite_temporary_buffer: [u8; 256],
+    next_line_sprite_temporary_buffer: [u8; 256],
 
     cycles: usize,
     scan_line: usize,
@@ -48,6 +49,7 @@ impl PPU {
             oam: OAM::new(64),
             secondary_oam: OAM::new(8),
             sprite_temporary_buffer: [0; 256],
+            next_line_sprite_temporary_buffer: [0; 256],
             cycles: 0,
             scan_line: 0,
         }
@@ -85,6 +87,7 @@ impl PPU {
             self.secondary_oam.initialize();
         } else if self.cycles == 64 {
             // Cycles 65-256: Sprite evaluation
+            self.next_line_sprite_temporary_buffer = [0; 256];
             let mut found_count = 0;
             let mut sprites = Vec::with_capacity(8);
             for &s in self.oam.iter() {
@@ -94,7 +97,6 @@ impl PPU {
                 if ((s.y)..(s.y + 8)).contains(&(self.scan_line as u8)) {
                     self.secondary_oam.set_sprite(found_count, s.clone());
                     sprites.push(s);
-                    // self.sprite_temporary_buffer[]
                     found_count += 1;
                     if found_count == 7 {
                         self.status.sprite_overflow = true;
@@ -102,18 +104,28 @@ impl PPU {
                     }
                 }
             }
+            // rendering...
             for s in sprites.iter() {
                 for i in (0..8).rev() {
-                    let c = self.get_specified_in_sprite_tile(
-                        s.tile_number,
-                        i,
-                        self.scan_line - s.y as usize,
-                    );
                     if s.x as usize + i < 256 {
-                        self.sprite_temporary_buffer[s.x as usize + i] = c;
+                        let c = self.get_specified_in_sprite_tile(
+                            s.tile_number,
+                            i,
+                            self.scan_line - s.y as usize,
+                        );
+
+                        self.next_line_sprite_temporary_buffer[s.x as usize + i] = if c == 0 {
+                            0
+                        } else {
+                            self.palette_ram
+                                .read_byte(((s.attribute.palette + 4) * 4 + c) as usize)
+                        };
                     }
                 }
             }
+        } else if self.cycles == 257 {
+            self.sprite_temporary_buffer
+                .copy_from_slice(&self.next_line_sprite_temporary_buffer);
         }
     }
 
@@ -141,10 +153,15 @@ impl PPU {
         let x = self.cycles - 1;
         let y = self.scan_line;
 
-        let mut c_byte = self.sprite_temporary_buffer[x];
-        if c_byte == 0 {
-            c_byte = self.get_background_pixel(x, y);
-        }
+        let sprite_c = self.sprite_temporary_buffer[x];
+        let background_c = self.get_background_pixel(x, y);
+
+        let c_byte = if sprite_c != 0 {
+            sprite_c
+        } else {
+            background_c
+        };
+
         let c = Color::from(c_byte);
         display[y][x][0] = c.0;
         display[y][x][1] = c.1;
@@ -162,7 +179,7 @@ impl PPU {
             // not (At x=0 to x=7 if the left-side clipping window is enabled (if bit 2 or bit 1 of PPUMASK is 0))
             && !((0..=7).contains(&x) && (self.mask.sprite_left_column || self.mask.background_left_column))
             // not (At any pixel where the background or sprite pixel is transparent (half TODO))
-            && !(c_byte == 0)
+            && !(background_c == 0)
         {
             self.status.set_zero_hit();
         }
@@ -661,12 +678,12 @@ struct SpriteAttribute {
     vflip: bool,
     hflip: bool,
     priority: bool,
-    c: u8,
+    palette: u8,
 }
 
 impl SpriteAttribute {
     fn set_as_u8(&mut self, byte: u8) {
-        self.c = byte & 0b11;
+        self.palette = byte & 0b11;
         self.priority = byte & 0b00100000 > 0;
         self.hflip = byte & 0b01000000 > 0;
         self.vflip = byte & 0b10000000 > 0;
