@@ -106,22 +106,18 @@ impl PPU {
             }
             // rendering...
             for s in sprites.iter() {
-                for i in 0..8 {
-                    if s.x as usize + i < 256 {
-                        let tile_x = if s.attribute.hflip { 7 - i } else { i };
-                        let c = self.get_specified_in_sprite_tile(
-                            s.tile_number,
-                            tile_x,
-                            self.scan_line - s.y as usize,
-                        );
+                let cs = self.get_specified_in_sprite_tile(s, self.scan_line - s.y as usize);
 
-                        self.next_line_sprite_temporary_buffer[s.x as usize + i] = if c == 0 {
-                            self.next_line_sprite_temporary_buffer[s.x as usize + i]
-                        } else {
-                            self.palette_ram
-                                .read_byte(((s.attribute.palette + 4) * 4 + c) as usize)
-                        };
+                for (i, &c) in cs.iter().enumerate() {
+                    if s.x as usize + i >= 256 {
+                        continue;
                     }
+                    self.next_line_sprite_temporary_buffer[s.x as usize + i] = if c == 0 {
+                        self.next_line_sprite_temporary_buffer[s.x as usize + i]
+                    } else {
+                        self.palette_ram
+                            .read_byte(((s.attribute.palette + 4) * 4 + c) as usize)
+                    };
                 }
             }
         } else if self.cycles == 257 {
@@ -240,16 +236,20 @@ impl PPU {
         u8::from(byte1 & (1 << (7 - x)) != 0) + (u8::from(byte2 & (1 << (7 - x)) != 0) << 1)
     }
 
-    // x: 0-7
     // y: 0-7
-    fn get_specified_in_sprite_tile(&mut self, tile_number: u8, x: usize, y: usize) -> u8 {
+    fn get_specified_in_sprite_tile(&mut self, s: &Sprite, y: usize) -> [u8; 8] {
         let start_addr =
-            self.control.get_sprites_pattern_table_base_address() + tile_number as usize * 0x10;
+            self.control.get_sprites_pattern_table_base_address() + s.tile_number as usize * 0x10;
 
         let byte1 = self.read_byte(start_addr + y);
         let byte2 = self.read_byte(start_addr + y + 8);
 
-        u8::from(byte1 & (1 << (7 - x)) != 0) + (u8::from(byte2 & (1 << (7 - x)) != 0) << 1)
+        let mut pixels = [0; 8];
+        for x in 0..pixels.len() {
+            pixels[x] = u8::from(byte1 & (1 << if s.attribute.hflip { x } else { 7 - x }) != 0)
+                + (u8::from(byte2 & (1 << if s.attribute.hflip { x } else { 7 - x }) != 0) << 1)
+        }
+        pixels
     }
 
     fn get_palette_number(&mut self, nametable_number: usize) -> u8 {
