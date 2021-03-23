@@ -116,7 +116,7 @@ impl PPU {
                         );
 
                         self.next_line_sprite_temporary_buffer[s.x as usize + i] = if c == 0 {
-                            0
+                            self.next_line_sprite_temporary_buffer[s.x as usize + i]
                         } else {
                             self.palette_ram
                                 .read_byte(((s.attribute.palette + 4) * 4 + c) as usize)
