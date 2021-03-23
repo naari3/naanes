@@ -238,6 +238,8 @@ impl PPU {
 
     // y: 0-7
     fn get_specified_in_sprite_tile(&mut self, s: &Sprite, y: usize) -> [u8; 8] {
+        let y = if s.attribute.vflip { 7 - y } else { y };
+
         let start_addr =
             self.control.get_sprites_pattern_table_base_address() + s.tile_number as usize * 0x10;
 
@@ -245,9 +247,9 @@ impl PPU {
         let byte2 = self.read_byte(start_addr + y + 8);
 
         let mut pixels = [0; 8];
-        for x in 0..pixels.len() {
-            pixels[x] = u8::from(byte1 & (1 << if s.attribute.hflip { x } else { 7 - x }) != 0)
-                + (u8::from(byte2 & (1 << if s.attribute.hflip { x } else { 7 - x }) != 0) << 1)
+        for i in 0..pixels.len() {
+            let x = if s.attribute.hflip { i } else { 7 - i };
+            pixels[i] = u8::from(byte1 & (1 << x) != 0) + (u8::from(byte2 & (1 << x) != 0) << 1)
         }
         pixels
     }
