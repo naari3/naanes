@@ -11,3 +11,4 @@ naanes = { path = ".." }
 image = "0.23.13"
 # pprof = { version = "0.4", features = ["flamegraph"] }
 piston_window = "*"
+fps_counter = "2.0.0"
