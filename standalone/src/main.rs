@@ -1,7 +1,5 @@
 extern crate naanes;
 
-use std::time::Instant;
-
 use piston_window::{
     clear, image as im_pis, Button, CloseEvent, EventLoop, G2dTexture, Key, PistonWindow,
     PressEvent, ReleaseEvent, RenderEvent, Texture, TextureContext, TextureSettings, Transformed,
@@ -23,7 +21,7 @@ fn main() {
             .build()
             .unwrap();
     let mut max_fps_mode = false;
-    window.set_max_fps(68);
+    window.set_max_fps(60);
     let mut texture_context = TextureContext {
         factory: window.factory.clone(),
         encoder: window.factory.create_command_buffer().into(),
@@ -37,15 +35,12 @@ fn main() {
     loop {
         if let Some(event) = window.next() {
             if let Some(_) = event.render_args() {
-                let start = Instant::now();
                 nes.step(&mut display_buffer);
 
                 for (x, y, pixel) in buffer.enumerate_pixels_mut() {
                     let color = display_buffer[y as usize][x as usize];
                     *pixel = image::Rgba([color[0], color[1], color[2], 255]);
                 }
-
-                // snapshot(display, total_cycles);
 
                 texture.update(&mut texture_context, &buffer).unwrap();
                 window.draw_2d(&event, |c, g, d| {
@@ -55,13 +50,7 @@ fn main() {
                 });
                 total_frames += 1;
 
-                let duration = start.elapsed();
-                println!(
-                    "{} frames, fps: {:}, took: {:?} ms",
-                    total_frames,
-                    fps.tick(),
-                    duration
-                );
+                println!("{} frames, fps: {:}", total_frames, fps.tick(),);
             }
 
             if let Some(Button::Keyboard(key)) = event.press_args() {

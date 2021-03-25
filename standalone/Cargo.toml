@@ -12,3 +12,12 @@ image = "0.23.13"
 # pprof = { version = "0.4", features = ["flamegraph"] }
 piston_window = "*"
 fps_counter = "2.0.0"
+
+[profile.release]
+debug = true
+
+[patch.crates-io]
+piston = { git = "https://github.com/naari3/piston" }
+pistoncore-window = { git = "https://github.com/naari3/piston" }
+pistoncore-input = { git = "https://github.com/naari3/piston" }
+pistoncore-event_loop = { git = "https://github.com/naari3/piston" }
