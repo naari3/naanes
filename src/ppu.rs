@@ -322,9 +322,12 @@ impl PPU {
         self.vram.read_byte(addr)
     }
 
-    fn get_mirrored_name_space_address(&mut self, address: usize) -> usize {
+    fn get_mirrored_name_space_address(&mut self, mut address: usize) -> usize {
         // TODO: support to another mirroring by mapper
         // see also https://wiki.nesdev.com/w/index.php/Mirroring
+        if address >= 0x3000 {
+            address -= 0x1000;
+        }
         match self.mapper.get_nametable_mirroring_type() {
             Mirroring::Horizontal => match address {
                 0x2000..=0x23FF => address,
