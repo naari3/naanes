@@ -366,6 +366,9 @@ impl MemIO for PPU {
         match address {
             0x0000..=0x1FFF => self.chr_rom[address],
             0x2002 => self.status.get_as_u8(),
+            0x2004 => self
+                .oam_data
+                .read_byte(self.oam_address.addr as usize, &mut self.oam),
             0x2007 => {
                 let mut addr = self.address.get() as usize & 0x3FFF;
                 if addr >= 0x3000 && addr <= 0x3EFF {
@@ -391,7 +394,9 @@ impl MemIO for PPU {
             0x2000 => self.control.set_as_u8(byte),
             0x2001 => self.mask.set_as_u8(byte),
             0x2003 => self.oam_address.write_byte(byte),
-            0x2004 => self.oam_data.write_byte(byte),
+            0x2004 => self
+                .oam_data
+                .write_byte(self.oam_address.addr as usize, byte, &mut self.oam),
             0x2005 => self.scroll.set_as_u8(byte),
             0x2006 => self.address.set_as_u8(byte),
             0x2007 => {
@@ -524,7 +529,6 @@ impl Status {
         self.vblank = false;
     }
 
-    #[allow(dead_code)]
     fn set_zero_hit(&mut self) {
         self.sprite_zero_hit = true;
     }
@@ -551,8 +555,24 @@ impl OAMAddress {
 struct OAMData {}
 
 impl OAMData {
-    pub fn write_byte(&mut self, byte: u8) {
-        println!("OAMData byte: 0x{:02X}", byte);
+    pub fn write_byte(&mut self, address: usize, byte: u8, oam: &mut OAM) {
+        oam.write_byte(address, byte);
+    }
+
+    pub fn read_byte(&mut self, address: usize, oam: &mut OAM) -> u8 {
+        oam.read_byte(address)
+    }
+}
+
+#[derive(Debug)]
+enum ScrollNext {
+    X,
+    Y,
+}
+
+impl Default for ScrollNext {
+    fn default() -> Self {
+        ScrollNext::X
     }
 }
 
@@ -561,17 +581,23 @@ impl OAMData {
 struct Scroll {
     x: u8,
     y: u8,
-    is_stored_first: bool,
+    next: ScrollNext,
 }
 
 impl Scroll {
     pub fn set_as_u8(&mut self, byte: u8) {
-        if self.is_stored_first {
-            self.x = byte;
-        } else {
-            self.y = byte;
+        match self.next {
+            ScrollNext::X => {
+                println!("scroll x: {}", byte);
+                self.x = byte;
+                self.next = ScrollNext::Y;
+            }
+            ScrollNext::Y => {
+                println!("scroll y: {}", byte);
+                self.y = byte;
+                self.next = ScrollNext::X;
+            }
         }
-        self.is_stored_first = !self.is_stored_first;
     }
 }
 
@@ -691,6 +717,13 @@ impl SpriteAttribute {
         self.hflip = byte & 0b01000000 > 0;
         self.vflip = byte & 0b10000000 > 0;
     }
+
+    fn get_as_u8(&mut self) -> u8 {
+        self.palette
+            + (u8::from(self.priority) << 5)
+            + (u8::from(self.hflip) << 6)
+            + (u8::from(self.vflip) << 7)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -731,6 +764,17 @@ impl OAM {
             3 => {
                 self.inner[idx].set_x(byte);
             }
+            _ => panic!("unreechable"),
+        }
+    }
+
+    fn read_byte(&mut self, address: usize) -> u8 {
+        let idx = address / 4;
+        match address % 4 {
+            0 => self.inner[idx].y,
+            1 => self.inner[idx].tile_number,
+            2 => self.inner[idx].attribute.get_as_u8(),
+            3 => self.inner[idx].x,
             _ => panic!("unreechable"),
         }
     }
