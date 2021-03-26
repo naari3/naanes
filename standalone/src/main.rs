@@ -35,6 +35,8 @@ fn main() {
     let mut total_frames = 0;
     let mut fps = fps_counter::FPSCounter::default();
 
+    let mut debug = false;
+
     loop {
         if let Some(event) = window.next() {
             if let Some(_) = event.render_args() {
@@ -43,12 +45,11 @@ fn main() {
                 for (x, y, pixel) in buffer.enumerate_pixels_mut() {
                     let color = display_buffer[y as usize][x as usize];
                     let mut p = image::Rgba([color[0], color[1], color[2], 255]);
-                    // for debugging
-                    // if (x % 0x10) == 0 || (y % 0x10) == 0 {
-                    //     p[0] = p[0].wrapping_add(0x30);
-                    //     p[1] = p[1].wrapping_add(0x30);
-                    //     p[2] = p[2].wrapping_add(0x30);
-                    // }
+                    if debug && ((x % 0x10) == 0 || (y % 0x10) == 0) {
+                        p[0] = p[0].wrapping_add(0x30);
+                        p[1] = p[1].wrapping_add(0x30);
+                        p[2] = p[2].wrapping_add(0x30);
+                    }
                     *pixel = p;
                 }
 
@@ -87,6 +88,9 @@ fn main() {
                             }
                             _ => panic!("no input file"),
                         }
+                    }
+                    Key::P => {
+                        debug = !debug;
                     }
                     Key::Tab => {
                         max_fps_mode = !max_fps_mode;
