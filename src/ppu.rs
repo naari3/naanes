@@ -25,6 +25,8 @@ pub struct PPU {
     secondary_oam: OAM,
     sprite_temporary_buffer: [u8; 256],
     next_line_sprite_temporary_buffer: [u8; 256],
+    zero_sprite_temporary_buffer: [u8; 256],
+    next_line_zero_sprite_temporary_buffer: [u8; 256],
 
     cycles: usize,
     scan_line: usize,
@@ -50,6 +52,8 @@ impl PPU {
             secondary_oam: OAM::new(8),
             sprite_temporary_buffer: [0; 256],
             next_line_sprite_temporary_buffer: [0; 256],
+            zero_sprite_temporary_buffer: [0; 256],
+            next_line_zero_sprite_temporary_buffer: [0; 256],
             cycles: 0,
             scan_line: 0,
         }
@@ -88,15 +92,16 @@ impl PPU {
         } else if self.cycles == 64 {
             // Cycles 65-256: Sprite evaluation
             self.next_line_sprite_temporary_buffer = [0; 256];
+            self.next_line_zero_sprite_temporary_buffer = [0; 256];
             let mut found_count = 0;
             let mut sprites = Vec::with_capacity(8);
-            for &s in self.oam.iter() {
+            for (id, &s) in self.oam.iter().enumerate() {
                 if s.y >= 240 {
                     continue;
                 }
                 if ((s.y)..(s.y + 8)).contains(&(self.scan_line as u8)) {
                     self.secondary_oam.set_sprite(found_count, s.clone());
-                    sprites.push(s);
+                    sprites.push((id, s));
                     found_count += 1;
                     if found_count == 7 {
                         self.status.sprite_overflow = true;
@@ -105,7 +110,10 @@ impl PPU {
                 }
             }
             // rendering...
-            for s in sprites.iter() {
+            for (id, s) in sprites.iter() {
+                if s.tile_number == 0xFF {
+                    println!("0");
+                }
                 let cs = self.get_specified_in_sprite_tile(s, self.scan_line - s.y as usize);
 
                 for (i, &c) in cs.iter().enumerate() {
@@ -118,11 +126,16 @@ impl PPU {
                         self.palette_ram
                             .read_byte(((s.attribute.palette + 4) * 4 + c) as usize)
                     };
+                    if *id == 0 {
+                        self.next_line_zero_sprite_temporary_buffer[s.x as usize + i] = c;
+                    }
                 }
             }
         } else if self.cycles == 257 {
             self.sprite_temporary_buffer
                 .copy_from_slice(&self.next_line_sprite_temporary_buffer);
+            self.zero_sprite_temporary_buffer
+                .copy_from_slice(&self.next_line_zero_sprite_temporary_buffer);
         }
     }
 
@@ -131,7 +144,6 @@ impl PPU {
         if self.cycles == 1 {
             if self.scan_line == 241 {
                 self.status.set_vblank();
-                self.status.clear_zero_hit();
                 if self.control.nmi_vblank {
                     *nmi = true;
                 }
@@ -165,29 +177,48 @@ impl PPU {
         display[y][x][2] = c.2;
 
         // https://wiki.nesdev.com/w/index.php/PPU_OAM#Sprite_zero_hits
-        let zero = self.oam.get(0);
         // not (sprite 0 hit has already occurred this frame)
         if !self.status.sprite_zero_hit
             // not (At x=255)
             && !(x == 255)
+            // not (If background or sprite rendering is disabled in PPUMASK ($2001))
+            && self.mask.background && self.mask.sprite
             // opaque pixel of sprite 0 overlaps an opaque pixel of the background
-            && (zero.x as usize) == x
-            && (zero.y as usize) == y
+            && self.zero_sprite_temporary_buffer[x] != 0
             // not (At x=0 to x=7 if the left-side clipping window is enabled (if bit 2 or bit 1 of PPUMASK is 0))
             && !((0..=7).contains(&x) && (self.mask.sprite_left_column || self.mask.background_left_column))
-            // not (At any pixel where the background or sprite pixel is transparent (half TODO))
+            // not (At any pixel where the background or sprite pixel is transparent)
             && !(background_c == 0)
         {
             self.status.set_zero_hit();
+            // println!("HIT cycles: {}, scan: {}", self.cycles, self.scan_line);
+            // println!("zero: {:?}", self.oam.get(0));
+            // println!("zero buffer: {:?}", self.zero_sprite_temporary_buffer);
         }
     }
 
     fn get_background_pixel(&mut self, x: usize, y: usize) -> u8 {
+        let mut nametable_address_offset = 0;
+        let mut x = x + self.scroll.x as usize;
+        let mut y = y + self.scroll.y as usize;
+        if x > 0xFF {
+            x %= 0x100;
+            nametable_address_offset += 0x400;
+        }
+        // maybe ?
+        if y > 0xEF {
+            y %= 0xF0;
+            nametable_address_offset += 0x800;
+        }
+
         let nametable_number = x / 0x08 + (y / 0x08) * 0x20;
-        let tile_number = self.vram[self.control.get_nametable_base_address() + nametable_number];
+        let tile_address = self.get_mirrored_name_space_address(
+            self.control.get_nametable_base_address() + nametable_address_offset + nametable_number,
+        );
+        let tile_number = self.vram[tile_address];
 
         let c = self.get_specified_in_tile(tile_number, x % 8, y % 8);
-        let pal = self.get_palette_number(nametable_number);
+        let pal = self.get_palette_number(nametable_number, nametable_address_offset);
 
         if c == 0 {
             self.palette_ram.read_byte(0)
@@ -251,16 +282,27 @@ impl PPU {
             let x = if s.attribute.hflip { i } else { 7 - i };
             pixels[i] = u8::from(byte1 & (1 << x) != 0) + (u8::from(byte2 & (1 << x) != 0) << 1)
         }
+        if s.tile_number == 0xFF {
+            println!("y: {} {:?}", s.y + y as u8, &pixels);
+        }
         pixels
     }
 
-    fn get_palette_number(&mut self, nametable_number: usize) -> u8 {
+    fn get_palette_number(
+        &mut self,
+        nametable_number: usize,
+        nametable_address_offset: usize,
+    ) -> u8 {
         let attr_addr_lower = (nametable_number & 0x1F) / 4;
         let attr_addr_higher = (nametable_number / 0x20) / 4;
         let attr_addr = attr_addr_lower + attr_addr_higher * 8;
-        let attr_byte = self.read_byte_from_nametable(
-            (attr_addr as usize) + self.control.get_nametable_base_address() + 0x3C0,
+        let attr_address = self.get_mirrored_name_space_address(
+            (attr_addr as usize)
+                + self.control.get_nametable_base_address()
+                + nametable_address_offset
+                + 0x3C0,
         );
+        let attr_byte = self.read_byte_from_nametable(attr_address);
         let low_addr = (nametable_number % 4) / 2;
         let high_addr = ((nametable_number / 0x20) % 4) / 2;
         let specific_bits = low_addr + high_addr * 2;
@@ -588,12 +630,10 @@ impl Scroll {
     pub fn set_as_u8(&mut self, byte: u8) {
         match self.next {
             ScrollNext::X => {
-                println!("scroll x: {}", byte);
                 self.x = byte;
                 self.next = ScrollNext::Y;
             }
             ScrollNext::Y => {
-                println!("scroll y: {}", byte);
                 self.y = byte;
                 self.next = ScrollNext::X;
             }
