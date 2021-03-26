@@ -42,7 +42,14 @@ fn main() {
 
                 for (x, y, pixel) in buffer.enumerate_pixels_mut() {
                     let color = display_buffer[y as usize][x as usize];
-                    *pixel = image::Rgba([color[0], color[1], color[2], 255]);
+                    let mut p = image::Rgba([color[0], color[1], color[2], 255]);
+                    // for debugging
+                    // if (x % 0x10) == 0 || (y % 0x10) == 0 {
+                    //     p[0] = p[0].wrapping_add(0x30);
+                    //     p[1] = p[1].wrapping_add(0x30);
+                    //     p[2] = p[2].wrapping_add(0x30);
+                    // }
+                    *pixel = p;
                 }
 
                 texture.update(&mut texture_context, &buffer).unwrap();
