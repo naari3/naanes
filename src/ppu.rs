@@ -111,9 +111,6 @@ impl PPU {
             }
             // rendering...
             for (id, s) in sprites.iter() {
-                if s.tile_number == 0xFF {
-                    println!("0");
-                }
                 let cs = self.get_specified_in_sprite_tile(s, self.scan_line - s.y as usize);
 
                 for (i, &c) in cs.iter().enumerate() {
@@ -191,9 +188,6 @@ impl PPU {
             && !(background_c == 0)
         {
             self.status.set_zero_hit();
-            // println!("HIT cycles: {}, scan: {}", self.cycles, self.scan_line);
-            // println!("zero: {:?}", self.oam.get(0));
-            // println!("zero buffer: {:?}", self.zero_sprite_temporary_buffer);
         }
     }
 
@@ -281,9 +275,6 @@ impl PPU {
         for i in 0..pixels.len() {
             let x = if s.attribute.hflip { i } else { 7 - i };
             pixels[i] = u8::from(byte1 & (1 << x) != 0) + (u8::from(byte2 & (1 << x) != 0) << 1)
-        }
-        if s.tile_number == 0xFF {
-            println!("y: {} {:?}", s.y + y as u8, &pixels);
         }
         pixels
     }
@@ -819,6 +810,7 @@ impl OAM {
         }
     }
 
+    #[allow(dead_code)]
     fn get(&self, index: usize) -> &Sprite {
         &self.inner[index]
     }
