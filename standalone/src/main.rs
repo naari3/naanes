@@ -1,5 +1,8 @@
 extern crate naanes;
 
+use std::{fs::File, io::Read};
+
+use nfd::Response;
 use piston_window::{
     clear, image as im_pis, Button, CloseEvent, EventLoop, G2dTexture, Key, PistonWindow,
     PressEvent, ReleaseEvent, RenderEvent, Texture, TextureContext, TextureSettings, Transformed,
@@ -63,6 +66,21 @@ fn main() {
                     Key::Down => nes.press_button(naanes::controller::Button::Down),
                     Key::Left => nes.press_button(naanes::controller::Button::Left),
                     Key::Right => nes.press_button(naanes::controller::Button::Right),
+                    Key::O => {
+                        let result = nfd::open_file_dialog(None, None).unwrap_or_else(|e| {
+                            panic!(e);
+                        });
+                        match result {
+                            Response::Okay(file_path) => {
+                                let mut rom_file = File::open(file_path).unwrap();
+                                let mut buf = Vec::new();
+                                rom_file.read_to_end(&mut buf).unwrap();
+                                let rom = naanes::rom::parse(buf);
+                                nes = naanes::nes::NES::new(rom);
+                            }
+                            _ => panic!("no input file"),
+                        }
+                    }
                     Key::Tab => {
                         max_fps_mode = !max_fps_mode;
                         let fps = if max_fps_mode { 10000 } else { 68 };
