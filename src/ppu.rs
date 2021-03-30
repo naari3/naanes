@@ -8,7 +8,7 @@ pub struct PPU {
     mapper: Mapper,
 
     vram: RAM,
-    palette_ram: RAM,
+    palette_ram: PaletteRAM,
     chr_rom: Vec<u8>,
     control: Control,        // $2000
     mask: Mask,              // $2001
@@ -37,7 +37,7 @@ impl PPU {
         PPU {
             mapper,
             vram: RAM::new(vec![0; 0x4000]),
-            palette_ram: RAM::new(vec![0; 0x20]),
+            palette_ram: PaletteRAM::new(),
             chr_rom,
             control: Control::default(),
             mask: Mask::default(),
@@ -386,8 +386,7 @@ impl MemIO for PPU {
                     0x0000..=0x0FFF => self.chr_rom[address],
                     0x1000..=0x1FFF => self.chr_rom[address],
                     0x2000..=0x2FFF => self.read_byte_from_nametable(address),
-                    0x3F00..=0x3F1F => self.palette_ram.read_byte(addr - 0x3F00),
-                    0x3F20..=0x3FFF => self.palette_ram.read_byte((addr - 0x3F20) & 0x1F),
+                    0x3F00..=0x3FFF => self.palette_ram.read_byte(addr - 0x3F00),
                     _ => 0,
                 };
                 self.address
@@ -415,8 +414,7 @@ impl MemIO for PPU {
                     0x0000..=0x0FFF => self.chr_rom[address],
                     0x1000..=0x1FFF => self.chr_rom[address],
                     0x2000..=0x2FFF => self.read_byte_from_nametable(address),
-                    0x3F00..=0x3F1F => self.palette_ram.read_byte(addr - 0x3F00),
-                    0x3F20..=0x3FFF => self.palette_ram.read_byte((addr - 0x3F20) & 0x1F),
+                    0x3F00..=0x3FFF => self.palette_ram.read_byte(addr - 0x3F00),
                     _ => 0,
                 };
                 byte
@@ -447,11 +445,8 @@ impl MemIO for PPU {
                     0x2000..=0x2FFF => {
                         self.write_byte_to_nametable(addr, byte);
                     }
-                    0x3F00..=0x3F1F => {
+                    0x3F00..=0x3FFF => {
                         self.palette_ram.write_byte(addr - 0x3F00, byte);
-                    }
-                    0x3F20..=0x3FFF => {
-                        self.palette_ram.write_byte((addr - 0x3F20) & 0x1F, byte);
                     }
                     _ => {}
                 };
@@ -463,6 +458,50 @@ impl MemIO for PPU {
             }
             _ => {}
         }
+    }
+}
+
+// https://wiki.nesdev.com/w/index.php/PPU_palettes
+#[derive(Debug)]
+struct PaletteRAM {
+    inner: Vec<u8>,
+}
+
+impl PaletteRAM {
+    fn new() -> Self {
+        Self {
+            inner: vec![0; 0x20],
+        }
+    }
+
+    // address: address minus 0x3F00
+    //          then, value is 0x00 ~ 0xFF
+    fn mirrored_address(&self, address: usize) -> usize {
+        match address {
+            0x10 => 0x00,
+            0x14 => 0x04,
+            0x18 => 0x08,
+            0x1C => 0x0C,
+            0x20..=0xFF => (address - 0x20) & 0x1F,
+            _ => address,
+        }
+    }
+}
+
+impl MemIO for PaletteRAM {
+    fn read_byte(&mut self, address: usize) -> u8 {
+        let address = self.mirrored_address(address);
+        self.inner[address]
+    }
+
+    fn read_byte_without_effect(&mut self, address: usize) -> u8 {
+        let address = self.mirrored_address(address);
+        self.inner[address]
+    }
+
+    fn write_byte(&mut self, address: usize, byte: u8) {
+        let address = self.mirrored_address(address);
+        self.inner[address] = byte;
     }
 }
 
