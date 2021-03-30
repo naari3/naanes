@@ -23,8 +23,8 @@ pub struct PPU {
 
     oam: OAM,
     secondary_oam: OAM,
-    sprite_temporary_buffer: [u8; 256],
-    next_line_sprite_temporary_buffer: [u8; 256],
+    sprite_temporary_buffer: [(u8, SpritePriority); 256],
+    next_line_sprite_temporary_buffer: [(u8, SpritePriority); 256],
     zero_sprite_temporary_buffer: [u8; 256],
     next_line_zero_sprite_temporary_buffer: [u8; 256],
 
@@ -50,8 +50,8 @@ impl PPU {
             oam_dma: OAMDMA::default(),
             oam: OAM::new(64),
             secondary_oam: OAM::new(8),
-            sprite_temporary_buffer: [0; 256],
-            next_line_sprite_temporary_buffer: [0; 256],
+            sprite_temporary_buffer: [(0, SpritePriority::default()); 256],
+            next_line_sprite_temporary_buffer: [(0, SpritePriority::default()); 256],
             zero_sprite_temporary_buffer: [0; 256],
             next_line_zero_sprite_temporary_buffer: [0; 256],
             cycles: 0,
@@ -91,7 +91,7 @@ impl PPU {
             self.secondary_oam.initialize();
         } else if self.cycles == 64 {
             // Cycles 65-256: Sprite evaluation
-            self.next_line_sprite_temporary_buffer = [0; 256];
+            self.next_line_sprite_temporary_buffer = [(0, SpritePriority::default()); 256];
             self.next_line_zero_sprite_temporary_buffer = [0; 256];
             let mut found_count = 0;
             let mut sprites = Vec::with_capacity(8);
@@ -120,8 +120,11 @@ impl PPU {
                     self.next_line_sprite_temporary_buffer[s.x as usize + i] = if c == 0 {
                         self.next_line_sprite_temporary_buffer[s.x as usize + i]
                     } else {
-                        self.palette_ram
-                            .read_byte(((s.attribute.palette + 4) * 4 + c) as usize)
+                        (
+                            self.palette_ram
+                                .read_byte(((s.attribute.palette + 4) * 4 + c) as usize),
+                            s.attribute.priority,
+                        )
                     };
                     if *id == 0 {
                         self.next_line_zero_sprite_temporary_buffer[s.x as usize + i] = c;
@@ -159,13 +162,18 @@ impl PPU {
         let x = self.cycles - 1;
         let y = self.scan_line;
 
-        let sprite_c = self.sprite_temporary_buffer[x];
-        let background_c = self.get_background_pixel(x, y);
+        let (sprite_c, priority) = self.sprite_temporary_buffer[x];
+        let (background_c, is_palett_enum_zero) = self.get_background_pixel(x, y);
 
-        let c_byte = if sprite_c != 0 {
-            sprite_c
-        } else {
-            background_c
+        let c_byte = match priority {
+            SpritePriority::Back => {
+                if is_palett_enum_zero && sprite_c != 0 {
+                    sprite_c
+                } else {
+                    background_c
+                }
+            }
+            SpritePriority::Front => sprite_c,
         };
 
         let c = Color::from(c_byte);
@@ -191,7 +199,8 @@ impl PPU {
         }
     }
 
-    fn get_background_pixel(&mut self, x: usize, y: usize) -> u8 {
+    // returns color number and palette number is 0 (transparent)
+    fn get_background_pixel(&mut self, x: usize, y: usize) -> (u8, bool) {
         let mut nametable_address_offset = 0;
         let mut x = x + self.scroll.x as usize;
         let mut y = y + self.scroll.y as usize;
@@ -214,11 +223,14 @@ impl PPU {
         let c = self.get_specified_in_tile(tile_number, x % 8, y % 8);
         let pal = self.get_palette_number(nametable_number, nametable_address_offset);
 
-        if c == 0 {
-            self.palette_ram.read_byte(0)
-        } else {
-            self.palette_ram.read_byte((pal * 4 + c) as usize) // maybe?
-        }
+        (
+            if c == 0 {
+                self.palette_ram.read_byte(0)
+            } else {
+                self.palette_ram.read_byte((pal * 4 + c) as usize) // maybe?
+            },
+            c == 0,
+        )
     }
 
     #[allow(dead_code)]
@@ -790,8 +802,8 @@ impl Default for SpritePriority {
 impl From<SpritePriority> for u8 {
     fn from(from: SpritePriority) -> Self {
         match from {
-            SpritePriority::Back => 0,
-            SpritePriority::Front => 1,
+            SpritePriority::Back => 1,
+            SpritePriority::Front => 0,
         }
     }
 }
@@ -808,8 +820,8 @@ impl SpriteAttribute {
     fn set_as_u8(&mut self, byte: u8) {
         self.palette = byte & 0b11;
         self.priority = match byte & 0b00100000 > 0 {
-            true => SpritePriority::Front,
-            false => SpritePriority::Back,
+            true => SpritePriority::Back,
+            false => SpritePriority::Front,
         };
         self.hflip = byte & 0b01000000 > 0;
         self.vflip = byte & 0b10000000 > 0;
