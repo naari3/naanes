@@ -775,18 +775,42 @@ impl Sprite {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum SpritePriority {
+    Front,
+    Back,
+}
+
+impl Default for SpritePriority {
+    fn default() -> Self {
+        Self::Back
+    }
+}
+
+impl From<SpritePriority> for u8 {
+    fn from(from: SpritePriority) -> Self {
+        match from {
+            SpritePriority::Back => 0,
+            SpritePriority::Front => 1,
+        }
+    }
+}
+
 #[derive(Default, Debug, Clone, Copy)]
 struct SpriteAttribute {
     vflip: bool,
     hflip: bool,
-    priority: bool,
+    priority: SpritePriority,
     palette: u8,
 }
 
 impl SpriteAttribute {
     fn set_as_u8(&mut self, byte: u8) {
         self.palette = byte & 0b11;
-        self.priority = byte & 0b00100000 > 0;
+        self.priority = match byte & 0b00100000 > 0 {
+            true => SpritePriority::Front,
+            false => SpritePriority::Back,
+        };
         self.hflip = byte & 0b01000000 > 0;
         self.vflip = byte & 0b10000000 > 0;
     }
