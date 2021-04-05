@@ -353,8 +353,8 @@ impl PPU {
             Mirroring::Vertical => match address {
                 0x2000..=0x23FF => address,
                 0x2400..=0x27FF => address,
-                0x2800..=0x2BFF => address - 0x400, // mirror
-                0x2C00..=0x2FFF => address - 0x400, // mirror
+                0x2800..=0x2BFF => address - 0x800, // mirror
+                0x2C00..=0x2FFF => address - 0x800, // mirror
                 _ => {
                     panic!("out of index: {:x}", address)
                 }
